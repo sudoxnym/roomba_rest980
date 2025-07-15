@@ -1,0 +1,13 @@
+services:
+  rest980:
+    container_name: rest980
+    image: koalazak/rest980:latest
+    ports:
+      - "3000:3000"
+    environment:
+      # Replace the following with the credentials you got in the last step.
+      - BLID=<BLID> 
+      - PASSWORD=<PW>
+      - ROBOT_IP=<IP>
+      - FIRMWARE_VERSION=2
+    restart: unless-stopped
