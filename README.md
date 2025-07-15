@@ -115,14 +115,14 @@ rest980 will gather all the data about our robot, but the integration will forma
   <summary>
   For HACS users
   </summary>
-  Add this custom repository, `https://github.com/ia74/roomba_rest980` to HACS as an Integration. Search for the addon ("iRobot Roomba (rest980)") and install it!
+  Add this custom repository, https://github.com/ia74/roomba_rest980 to HACS as an Integration. Search for the addon ("iRobot Roomba (rest980)") and install it!
 </details>
 
 <details>
   <summary>
   Manual installation
   </summary>
-  Clone this repository, `https://github.com/ia74/roomba_rest980`, and add the custom component folder (`roomba_rest980`) to your Home Assistant's `config/custom_components` folder.
+  Clone this repository, https://github.com/ia74/roomba_rest980 , and add the custom component folder (`roomba_rest980`) to your Home Assistant's `config/custom_components` folder.
 </details>
 
 When you install the integration and restart Home Assistant, you will notice it picking up your Roomba.
