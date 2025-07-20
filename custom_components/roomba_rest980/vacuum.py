@@ -48,6 +48,7 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         self._entry: ConfigEntry = entry
         self._attr_supported_features = SUPPORT_ROBOT
         self._attr_unique_id = f"{entry.unique_id}_vacuum"
+        self._attr_name = entry.title
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.unique_id)},
             "name": entry.title,
