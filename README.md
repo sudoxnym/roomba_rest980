@@ -26,8 +26,8 @@ I found that working with jeremywillans' implementation was nice and almost effo
 - rest980
   - If you don't have it yet, don't worry; this guide will show you how to add it.
 - Rooms mapped/setup in iRobot app
-  - Note that everytime you remap and a room changes, it's ID may change!
-- Knowledge of your Roomba's IP
+  - Note that everytime you remap and a room changes, it's ID may change (local users)!
+- Knowledge of your Roomba and rest980 servers' IPs
 
 > I recommend that you use [the lovelace-roomba-vacuum-card](https://github.com/jeremywillans/lovelace-roomba-vacuum-card) until I remake it for this integration.
 
@@ -140,7 +140,7 @@ This is not due to your rest980 API server being discovered, rather the integrat
 ## Step 3: Adding your Roomba!
 
 If you see the autodiscovered integration, press "Add"!  
-You'll be presented with this popup. It will be styled much better later, but this works well enough for now.
+You'll be presented with this popup. 
 
 ![Adding the robot](img/ADD.png)
 
@@ -152,7 +152,9 @@ http://localhost:3000
 
 and don't leave any trailing /s.
 
-If you did it right, you'll see a success screen!  
+You may also input your iRobot credentials now, if you want to use cloud features that are coming soon. You must check "Enable cloud features?" for the cloud API to be used.
+
+If you did it right, you'll see a success screen that has also gotten your given name for the Roomba!
 
 ![Added the config!](img/ADDeD.png)
 
@@ -160,12 +162,22 @@ If all has gone right, checking the device will show something like this:
 
 ![Added the config!](img/fin.png)
 
-But those aren't your rooms....
+## Step 4: Rooms! (Cloud)
 
-## Step 4: Rooms!
+> As of current, this text is a placeholder for when this feature actually gets added. Still work in progress, but when this banner is removed, the below will be true.
+
+Your rooms will be auto-imported, alongside a clean map view, much like the one from the app.  
+This allows you to selectively clean rooms, and control it by automation (tutorial later).  
+Rooms you select will be cleaned in the order you select. Two-pass functionailty coming soon as well.
+
+## Step 4: Rooms! (rest980 ONLY)
 
 TO BE CONTINUED...
-Rooms are not given to us easily, but a fix is in progress for that.
+Rooms are not given to us easily when we're fully local, but a fix is in progress for that.
+
+## Important Note
+
+From this part on, the guide will not diverge unless required and will assume you are using Cloud features, but most of it should be generically implemented.
 
 ## Step 5: Robot Maintenance / Done!
 
