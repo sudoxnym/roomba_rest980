@@ -54,17 +54,6 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             "manufacturer": "iRobot",
         }
 
-    @property
-    def device_info(self):
-        data = self.coordinator.data or {}
-        return {
-            "identifiers": self._attr_device_info.get("identifiers"),
-            "name": self._attr_device_info.get("name"),
-            "manufacturer": self._attr_device_info.get("manufacturer"),
-            "model": f"Roomba {data.get('sku')}",
-            "sw_version": data.get("softwareVer"),
-        }
-
     def _handle_coordinator_update(self):
         """Update all attributes."""
         data = self.coordinator.data or {}
@@ -85,6 +74,14 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         self._attr_available = data != {}
         self._attr_battery_level = data.get("batPct", 0)
         self._attr_extra_state_attributes = createExtendedAttributes(self)
+        self._attr_device_info = {
+            "identifiers": self._attr_device_info.get("identifiers"),
+            "name": self._attr_device_info.get("name"),
+            "manufacturer": self._attr_device_info.get("manufacturer"),
+            "model": f"Roomba {data.get('sku')}",
+            "sw_version": data.get("softwareVer"),
+        }
+        self._async_write_ha_state()
 
     async def async_clean_spot(self, **kwargs):
         """Spot clean."""
