@@ -7,12 +7,13 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, cleanBaseMappings, jobInitiatorMappings, phaseMappings
-from .RoombaSensor import RoombaSensor
+from .RoombaSensor import RoombaSensor, RoombaCloudSensor
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Create the sensors needed to poll Roomba's data."""
     coordinator = hass.data[DOMAIN][entry.entry_id + "_coordinator"]
+    cloudCoordinator = hass.data[DOMAIN][entry.entry_id + "_cloud"]
     async_add_entities(
         [
             RoombaAttributes(coordinator, entry),
@@ -31,6 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             RoombaCarpetBoostMode(coordinator, entry),
             RoombaCleanEdges(coordinator, entry),
             RoombaCleanMode(coordinator, entry),
+            RoombaCloudAttributes(cloudCoordinator, entry),
         ],
         update_before_add=True,
     )
@@ -87,6 +89,31 @@ class RoombaAttributes(RoombaSensor):
     def extra_state_attributes(self):
         """Return all the attributes returned by rest980."""
         return self.coordinator.data or {}
+
+
+class RoombaCloudAttributes(RoombaCloudSensor):
+    """A simple sensor that returns all given datapoints without modification."""
+
+    _rs_given_info = ("Cloud Attributes", "cloud_attributes")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        self._attr_native_value = "OK" if self.coordinator.data else "Unavailable"
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self):
+        """Return all the attributes returned by iRobot's cloud."""
+        return (
+            self.coordinator.data.get(
+                self.hass.data[DOMAIN][self._entry.entry_id + "_blid"]
+            )
+            or {}
+        )
 
 
 class RoombaPhase(RoombaSensor):

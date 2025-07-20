@@ -73,7 +73,6 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             self._attr_activity = VacuumActivity.DOCKED
 
         self._attr_available = data != {}
-        self._attr_battery_level = data.get("batPct", 0)
         self._attr_extra_state_attributes = createExtendedAttributes(self)
         self._attr_device_info = {
             "identifiers": self._attr_device_info.get("identifiers"),

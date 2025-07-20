@@ -7,8 +7,12 @@ Still work in progress, but the vacuum entity has been fully ported over.
 ## Roadmap
 
 - [x] Feature parity (minus actions) with vacuum entity
+- [x] Cloud API connection
+  - [ ] Cloud MQTT connection
 - [ ] Actions
 - [ ] Dynamically grab rooms and add them to the UI
+  - [x] Grab room data (optional, cloud only)
+  - [ ] Create map image
 
 ## Why?
 

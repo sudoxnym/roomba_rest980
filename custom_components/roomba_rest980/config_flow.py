@@ -7,8 +7,16 @@ from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+from .CloudApi import iRobotCloudApi
 
-SCHEMA = vol.Schema({vol.Required("base_url"): str})
+SCHEMA = vol.Schema(
+    {
+        vol.Required("base_url"): str,
+        vol.Required("cloud_api", default=True): bool,
+        vol.Optional("irobot_username"): str,
+        vol.Optional("irobot_password"): str,
+    }
+)
 
 
 class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -31,6 +39,11 @@ class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 data_schema=SCHEMA,
                                 errors=["cannot_connect"],
                             )
+                    if user_input["cloud_api"]:
+                        async with iRobotCloudApi(
+                            user_input["irobot_username"], user_input["irobot_password"]
+                        ) as api:
+                            await api.authenticate()
                 except Exception:
                     return self.async_show_form(
                         step_id="user",

@@ -2,13 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to rest980",
-        "description": "This is needed to grab your roomba's API data.",
+        "title": "Setup Roomba for integration",
         "data": {
-          "base_url": "rest980 Server Base URL"
+          "base_url": "rest980 Base URL (ex: http://localhost:3000)",
+          "cloud_api": "Enable cloud features?",
+          "irobot_username": "iRobot Username",
+          "irobot_password": "iRobot Password"
         },
         "data_description": {
-          "base_url": "Example: http://localhost:3000"
+          "cloud_api": "Use iRobot's API to add extra features like dynamic rooms and maps."
         }
       }
     },
