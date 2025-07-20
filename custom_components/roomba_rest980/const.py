@@ -51,6 +51,7 @@ cleanBaseMappings = {
     352: "Sealing Problem",
     353: "Bag Full",
     360: "Comms Problem",
+    364: "Bin Full Sensors Not Cleared",
 }
 
 jobInitiatorMappings = {

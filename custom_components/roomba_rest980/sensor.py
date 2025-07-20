@@ -25,6 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             RoombaCleanBase(coordinator, entry),
             RoombaTotalJobs(coordinator, entry),
             RoombaMissionStartTime(coordinator, entry),
+            RoombaMissionElapsedTime(coordinator, entry),
             RoombaRechargeTime(coordinator, entry),
             RoombaMissionExpireTime(coordinator, entry),
             RoombaCarpetBoostMode(coordinator, entry),
@@ -232,6 +233,41 @@ class RoombaMissionStartTime(RoombaSensor):
         self.async_write_ha_state()
 
 
+class RoombaMissionElapsedTime(RoombaSensor):
+    """Read the mission elapsed time of the Roomba."""
+
+    _rs_given_info = ("Job Elapsed Time", "job_elapsed_time")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Create a new job elapsed time reading."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+        self._attr_icon = "mdi:timeline-clock"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        status = data.get("cleanMissionStatus", {})
+        missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
+
+        if missionStartTime:
+            self._attr_available = True
+            try:
+                elapsed_time = dt_util.utcnow() - dt_util.utc_from_timestamp(
+                    missionStartTime
+                )
+                # Convert timedelta to minutes
+                self._attr_native_value = elapsed_time.total_seconds() / 60
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
+            self._attr_available = False
+
+        self.async_write_ha_state()
+
+
 class RoombaRechargeTime(RoombaSensor):
     """Read the mission start time of the Roomba."""
 
@@ -366,17 +402,18 @@ class RoombaMissionExpireTime(RoombaSensor):
         """Update sensor when coordinator data changes."""
         data = self.coordinator.data or {}
         status = data.get("cleanMissionStatus", {})
-        missionStartTime = status.get("expireTm")  # Unix timestamp in seconds?
-        self._attr_available = False
+        expireTime = status.get("expireTm")  # Unix timestamp in seconds?
 
-        if missionStartTime:
+        if expireTime:
             self._attr_available = True
             try:
-                self._attr_native_value = dt_util.utc_from_timestamp(missionStartTime)
+                self._attr_native_value = dt_util.utc_from_timestamp(expireTime)
             except (TypeError, ValueError):
                 self._attr_native_value = None
+                self._attr_available = False
         else:
             self._attr_native_value = None
+            self._attr_available = False
 
         self.async_write_ha_state()
 

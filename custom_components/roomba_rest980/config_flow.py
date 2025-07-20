@@ -1,10 +1,14 @@
 """The configuration flow for the robot."""
 
 import voluptuous as vol
+import asyncio
 
 from homeassistant import config_entries
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+
+SCHEMA = vol.Schema({vol.Required("base_url"): str})
 
 
 class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -13,12 +17,33 @@ class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Show the user the input for the base url."""
         if user_input is not None:
-            return self.async_create_entry(title="Roomba", data=user_input, options={})
+            session = async_get_clientsession(self.hass)
+            data = {}
+            async with asyncio.timeout(10):
+                try:
+                    async with session.get(
+                        f"{user_input['base_url']}/api/local/info/state"
+                    ) as resp:
+                        data = await resp.json() or {}
+                        if data == {}:
+                            return self.async_show_form(
+                                step_id="user",
+                                data_schema=SCHEMA,
+                                errors=["cannot_connect"],
+                            )
+                except Exception:
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=SCHEMA,
+                        errors=["cannot_connect"],
+                    )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({vol.Required("base_url"): str}),
-        )
+            return self.async_create_entry(
+                title=data.get("name", "Roomba"),
+                data=user_input,
+            )
+
+        return self.async_show_form(step_id="user", data_schema=SCHEMA)
 
     async def async_step_options(self, user_input=None):
         """I dont know."""
