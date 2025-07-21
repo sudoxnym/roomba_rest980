@@ -1,11 +1,11 @@
 # services.yaml
-vacuum_action:
+action:
   fields:
     command:
       required: true
       example: "dock"
 
-vacuum_clean:
+clean:
   fields:
     payload:
       required: true

@@ -1,5 +1,7 @@
 """Create sensors that poll Roomba's data."""
 
+import logging
+
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import PERCENTAGE, UnitOfArea, UnitOfTime
 from homeassistant.core import HomeAssistant
@@ -9,11 +11,37 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, cleanBaseMappings, jobInitiatorMappings, phaseMappings
 from .RoombaSensor import RoombaSensor, RoombaCloudSensor
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Create the sensors needed to poll Roomba's data."""
     coordinator = hass.data[DOMAIN][entry.entry_id + "_coordinator"]
     cloudCoordinator = hass.data[DOMAIN][entry.entry_id + "_cloud"]
+
+    # Create cloud pmap entities if cloud data is available
+    cloud_entities = []
+    if cloudCoordinator and cloudCoordinator.data:
+        blid = hass.data[DOMAIN][entry.entry_id + "_blid"]
+        # Get cloud data for the specific robot
+        if blid in cloudCoordinator.data:
+            cloud_data = cloudCoordinator.data[blid]
+            # Create pmap entities from cloud data
+            if "pmaps" in cloud_data:
+                for pmap in cloud_data["pmaps"]:
+                    try:
+                        cloud_entities.append(
+                            RoombaCloudPmap(cloudCoordinator, entry, pmap)
+                        )
+                    except (KeyError, TypeError) as e:
+                        _LOGGER.warning(
+                            "Failed to create pmap entity for %s: %s",
+                            pmap.get("pmap_id", "unknown"),
+                            e,
+                        )
+    if cloud_entities:
+        async_add_entities(cloud_entities)
+
     async_add_entities(
         [
             RoombaAttributes(coordinator, entry),
@@ -114,6 +142,21 @@ class RoombaCloudAttributes(RoombaCloudSensor):
             )
             or {}
         )
+
+
+class RoombaCloudPmap(RoombaCloudSensor):
+    """Sensor for Roomba persistent map (pmap) data from cloud."""
+
+    def __init__(self, coordinator, entry, pmap) -> None:
+        """Initialize the pmap sensor with data from cloud API."""
+        # Handle different pmap data structures
+        header = pmap["active_pmapv_details"]["map_header"]
+        pmap_name = header.get("name", "Unknown Map")
+        pmap_id = header.get("id", "unknown")
+
+        self._rs_given_info = (pmap_name, pmap_id)
+        super().__init__(coordinator, entry)
+        self._attr_extra_state_attributes = pmap
 
 
 class RoombaPhase(RoombaSensor):

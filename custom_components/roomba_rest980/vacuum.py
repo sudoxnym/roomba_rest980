@@ -1,8 +1,5 @@
 """The vacuum."""
 
-from datetime import datetime
-
-import json
 import logging
 
 from homeassistant.components.vacuum import (
@@ -15,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-
 from .LegacyCompatibility import createExtendedAttributes
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,7 +23,8 @@ SUPPORT_ROBOT = (
     | VacuumEntityFeature.MAP
     | VacuumEntityFeature.SEND_COMMAND
     | VacuumEntityFeature.STATE
-    | VacuumEntityFeature.STATUS
+    | VacuumEntityFeature.STOP
+    | VacuumEntityFeature.PAUSE
 )
 
 
@@ -60,6 +57,7 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         data = self.coordinator.data or {}
         status = data.get("cleanMissionStatus", {})
         cycle = status.get("cycle")
+        phase = status.get("phase")
         not_ready = status.get("notReady")
 
         self._attr_activity = VacuumActivity.IDLE
@@ -69,8 +67,14 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             self._attr_activity = VacuumActivity.ERROR
         if cycle in ["clean", "quick", "spot", "train"]:
             self._attr_activity = VacuumActivity.CLEANING
-        if cycle in ["evac", "dock"]:
+        if cycle in ["evac", "dock"]:  # Emptying Roomba Bin to Dock, Entering Dock
             self._attr_activity = VacuumActivity.DOCKED
+        if phase in {
+            "hmUsrDock",
+            "hwMidMsn",
+            "hmPostMsn",
+        }:  # Sent Home, Mid Dock, Final Dock
+            self._attr_activity = VacuumActivity.RETURNING
 
         self._attr_available = data != {}
         self._attr_extra_state_attributes = createExtendedAttributes(self)
@@ -88,37 +92,99 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
 
     async def async_start(self):
         """Start cleaning floors, check if any are selected or just clean everything."""
-        payload = []
-
-        for entity in self.hass.states.async_all("switch"):
-            if entity.entity_id.startswith("switch.clean_") and entity.state == "on":
-                switch_obj = self.hass.data[DOMAIN].get(entity.entity_id)
-                if switch_obj:
-                    payload.append(switch_obj.get_region_json())
-
-        if payload:
-            # TODO: FIX THIS FIX THIS IT NEEDS TO BE DYNAMIC NOT THIS GARBAGE
-            # TODO: FIX THIS FIX THIS IT NEEDS TO BE DYNAMIC NOT THIS GARBAGE
-            # TODO: FIX THIS FIX THIS IT NEEDS TO BE DYNAMIC NOT THIS GARBAGE
+        data = self.coordinator.data or {}
+        if data.get("phase") == "stop":
             await self.hass.services.async_call(
                 DOMAIN,
-                "vacuum_clean",
+                "rest980_action",
                 service_data={
-                    "payload": json.dumps(
-                        {
-                            "ordered": 1,
-                            "pmap_id": "BGQxV6zGTmCsalWFHr-S5g",
-                            "regions": payload,
-                        }
-                    )
+                    "action": "resume",
+                    "base_url": self._entry.data["base_url"],
                 },
                 blocking=True,
             )
-        else:
-            _LOGGER.warning("No rooms selected for cleaning")
+            return
+
+        try:
+            # Get selected rooms from switches (if available)
+            payload = []
+            regions = []
+
+            # Check if we have room selection switches available
+            if hasattr(self, "_selected_rooms") and self._selected_rooms:
+                # Build regions list from selected rooms
+                regions = [
+                    room.get_region_json()
+                    for room in self._selected_rooms
+                    if hasattr(room, "get_region_json")
+                ]
+
+            # If we have specific regions selected, use targeted cleaning
+            if regions:
+                payload = {
+                    "ordered": 1,
+                    "pmap_id": self._attr_extra_state_attributes.get("pmap0_id", ""),
+                    "regions": regions,
+                }
+
+                await self.hass.services.async_call(
+                    DOMAIN,
+                    "rest980_clean",
+                    service_data={
+                        "payload": payload,
+                        "base_url": self._entry.data["base_url"],
+                    },
+                    blocking=True,
+                )
+            else:
+                # No specific rooms selected, start general clean
+                _LOGGER.info("Starting general cleaning (no specific rooms selected)")
+                await self.hass.services.async_call(
+                    DOMAIN,
+                    "rest980_clean",
+                    service_data={
+                        "payload": {"action": "start"},
+                        "base_url": self._entry.data["base_url"],
+                    },
+                    blocking=True,
+                )
+        except (KeyError, AttributeError, ValueError) as e:
+            _LOGGER.error("Failed to start cleaning due to configuration error: %s", e)
+        except Exception as e:  # pylint: disable=broad-except
+            _LOGGER.error("Failed to start cleaning: %s", e)
+
+    async def async_stop(self):
+        """Stop the action."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            "rest980_action",
+            service_data={
+                "action": "stop",
+                "base_url": self._entry.data["base_url"],
+            },
+            blocking=True,
+        )
+
+    async def async_pause(self):
+        """Pause the current action."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            "rest980_action",
+            service_data={
+                "action": "pause",
+                "base_url": self._entry.data["base_url"],
+            },
+            blocking=True,
+        )
 
     async def async_return_to_base(self):
         """Calls the Roomba back to its dock."""
         await self.hass.services.async_call(
-            DOMAIN, "vacuum_action", service_data={"command": "dock"}, blocking=True
+            DOMAIN,
+            "rest980_action",
+            service_data={
+                "action": "dock",
+                "base_url": self._entry.data["base_url"],
+            },
+            blocking=True,
         )

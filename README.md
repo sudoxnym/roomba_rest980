@@ -1,16 +1,26 @@
 # roomba_rest980
 
-Drop-in native integration/replacement for [jerrywillans/ha-rest980-roomba](https://github.com/jeremywillans/ha-rest980-roomba).
+Drop-in native integration/replacement for [jeremywillans/ha-rest980-roomba](https://github.com/jeremywillans/ha-rest980-roomba).
 
 Still work in progress, but the vacuum entity has been fully ported over.
 
 ## Roadmap
 
-- [x] Feature parity (minus actions) with vacuum entity
+- [x] Attribute parity with jeremywillans' YAML entry
 - [x] Cloud API connection
   - [ ] Cloud MQTT connection
-- [ ] Actions
-- [ ] Dynamically grab rooms and add them to the UI
+- [x] Actions
+  - [x] Start
+    - [ ] Clean all rooms by default
+    - [x] Selective room cleaning
+    - [ ] Two pass feature
+  - [x] Pause
+  - [ ] Unpause (Requires further testing)
+  - [x] Return Home
+  - [x] Stop
+  - [x] Spot Clean
+  - [ ] Mapping Run
+- [x] Dynamically grab rooms and add them to the UI
   - [x] Grab room data (optional, cloud only)
   - [ ] Create map image
 
@@ -162,13 +172,23 @@ If all has gone right, checking the device will show something like this:
 
 ![Added the config!](img/fin.png)
 
-## Step 4: Rooms! (Cloud)
+## Step 3.5: Cloud issues.. (Cloud)
 
-> As of current, this text is a placeholder for when this feature actually gets added. Still work in progress, but when this banner is removed, the below will be true.
+iRobot does some quite interesting things with their API. As of current, my implementation does not use the cloud MQTT server (yet). However, even with the iRobot app and every instance of a connection closed, you may get ratelimited (*sometimes*) with the error "No mqtt slot available". There isn't a workaround for this that I know of, except to restart HA/reload the robot's config entry in ~5 minutes.
+
+## Step 4: Rooms! (Cloud)
 
 Your rooms will be auto-imported, alongside a clean map view, much like the one from the app.  
 This allows you to selectively clean rooms, and control it by automation (tutorial later).  
 Rooms you select will be cleaned in the order you select. Two-pass functionailty coming soon as well.
+
+![Added the config!](img/rooms.png)
+
+Room types and names are also dynamically imported as to be expected.
+
+To work with this, switch the "Clean (room)" switches on in the order you like, then press the Clean button from the vacuum's entity!
+
+![Room selection](img/clean.png)
 
 ## Step 4: Rooms! (rest980 ONLY)
 
@@ -177,7 +197,7 @@ Rooms are not given to us easily when we're fully local, but a fix is in progres
 
 ## Important Note
 
-From this part on, the guide will not diverge unless required and will assume you are using Cloud features, but most of it should be generically implemented.
+From this part on, the guide will not diverge into Cloud/Local unless required and will assume you are using Cloud features, but most of it should be generically implemented.
 
 ## Step 5: Robot Maintenance / Done!
 
@@ -185,18 +205,22 @@ From this part on, the guide will not diverge unless required and will assume yo
 
 This integration will eventually support the maintenance function of the Roomba, but still is not implemented
 
-## Cleaning a room using the Roomba from HA
-
-> Unfortunately, this is not implemented yet, alongside any other action.
-
-In any configuration you'd like, you may lay the switches on the dashboard and switch them in the order you want them cleaned. After that, press Start on the native Vacuum!
-
-## Note:
-
-Unfortunately, this is about where my current progress ends. We gather all the possible data and display it. I will be working on this integration however and eventually these features will be fully supported.
-
 ## Backwards Compatibility
 
-Minus the actions (currently!), the integration adds all the attributes that you would expect from `jeremywillans` implementation, even adding an `extendedState` attribute that gives you "Ready", "Training", "Spot", etc. since HA doesnt do that natively for some odd reason.
+The integration adds all the attributes that you would expect from [jeremywillans implementation](https://github.com/jeremywillans/ha-rest980-roomba), making it compatible with [the lovelace-roomba-vacuum-card](https://github.com/jeremywillans/lovelace-roomba-vacuum-card).
 
 ![Compatibility](img/compat.png)
+
+One minor issue is that the Vacuum entity only supports these states:
+```
+Cleaning: The vacuum is currently cleaning.
+Docked: The vacuum is currently docked. It is assumed that docked can also mean charging.
+Error: The vacuum encountered an error while cleaning.
+Idle: The vacuum is not paused, not docked, and does not have any errors.
+Paused: The vacuum was cleaning but was paused without returning to the dock.
+Returning: The vacuum is done cleaning and is currently returning to the dock, but not yet docked.
+Unavailable: The entity is currently unavailable.
+Unknown: The state is not yet known.
+```
+
+even adding an `extendedState` attribute that gives you "Ready", "Training", "Spot", etc. since HA doesnt do that natively for some odd reason.
