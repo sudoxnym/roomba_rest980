@@ -209,6 +209,8 @@ This integration will eventually support the maintenance function of the Roomba,
 
 The integration adds all the attributes that you would expect from [jeremywillans implementation](https://github.com/jeremywillans/ha-rest980-roomba), making it compatible with [the lovelace-roomba-vacuum-card](https://github.com/jeremywillans/lovelace-roomba-vacuum-card).
 
+You may see the code for this in [LegacyCompatibility.py](custom_components/roomba_rest980/LegacyCompatibility.py)
+
 ![Compatibility](img/compat.png)
 
 One minor issue is that the Vacuum entity only supports these states:
@@ -222,5 +224,4 @@ Returning: The vacuum is done cleaning and is currently returning to the dock, b
 Unavailable: The entity is currently unavailable.
 Unknown: The state is not yet known.
 ```
-
-even adding an `extendedState` attribute that gives you "Ready", "Training", "Spot", etc. since HA doesnt do that natively for some odd reason.
+Since the Roomba reports a much more extensive cycle/phase output, I added an attribute "extendedStatus" that gives you "Ready", "Training", "Spot".
