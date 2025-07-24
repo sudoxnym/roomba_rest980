@@ -11,6 +11,8 @@ Still work in progress, but the vacuum entity has been fully ported over.
   - [ ] Cloud MQTT connection
 - [x] Actions
   - [x] Start
+    - [x] Favorites
+      - This feature requires more testing, to make sure it's actually initiating a favorite cycle.
     - [ ] Clean all rooms by default
     - [x] Selective room cleaning
     - [ ] Two pass feature

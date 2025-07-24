@@ -124,7 +124,9 @@ async def _async_setup_cloud(
         if "blid" not in entry.data:
             await _async_match_blid(hass, entry, coordinator, cloud_coordinator)
 
-        await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["switch", "button"]
+        )
 
     except Exception as e:  # pylint: disable=broad-except
         _LOGGER.error("Failed to set up cloud coordinator: %s", e)

@@ -439,6 +439,11 @@ class iRobotCloudApi:
 
         return await self._aws_request(url, params)
 
+    async def get_favorites(self) -> dict[str, Any]:
+        """Get favorite cleaning routines."""
+        url = f"{self.deployment['httpBaseAuth']}/v1/user/favorites"
+        return await self._aws_request(url)
+
     async def get_robot_data(self, blid: str) -> dict[str, Any]:
         """Get comprehensive robot data including pmaps and mission history."""
         if blid not in self.robots:
@@ -484,6 +489,7 @@ class iRobotCloudApi:
                 _LOGGER.error("Failed to get data for robot %s: %s", blid, e)
                 all_data[blid] = {"error": str(e)}
 
+        all_data["favorites"] = await self.get_favorites()
         return all_data
 
 
