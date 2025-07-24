@@ -23,8 +23,8 @@
     }
   ],
   "documentation": "https://github.com/ia74/roomba_rest980",
-  "issue_tracker": "https://github.com/ia74/roomba_rest980/issues",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ia74/roomba_rest980/issues",
   "requirements": ["aiohttp"],
   "version": "1.4.1",
   "zeroconf": [
