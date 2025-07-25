@@ -552,11 +552,102 @@ class RoombaMapCamera(Camera):
             "clean_zones_count": len(self._clean_zones),
             "observed_zones_count": len(self._observed_zones),
             "points_count": len(self._points2d),
-            "calibration_points": self.calibration_points,
+            "calibration": self.calibration,
+            "rooms": self.rooms,
         }
 
     @property
-    def calibration_points(self) -> list[dict[str, dict[str, int]]] | None:
+    def rooms(self) -> dict[str, dict[str, Any]] | None:
+        """Return rooms configuration for vacuum card integration."""
+        if not self._regions or not self._points2d:
+            return None
+
+        # Calculate map bounds and scaling (same as calibration)
+        all_coords = [
+            point["coordinates"]
+            for point in self._points2d
+            if "coordinates" in point and len(point["coordinates"]) >= 2
+        ]
+
+        if not all_coords:
+            return None
+
+        # Find min/max coordinates to determine map bounds
+        x_coords = [coord[0] for coord in all_coords]
+        y_coords = [coord[1] for coord in all_coords]
+
+        min_x, max_x = min(x_coords), max(x_coords)
+        min_y, max_y = min(y_coords), max(y_coords)
+
+        map_width = max_x - min_x
+        map_height = max_y - min_y
+
+        if map_width <= 0 or map_height <= 0:
+            return None
+
+        # Calculate scale to fit image (same as in _render_map)
+        scale_x = (MAP_WIDTH - 40) / map_width
+        scale_y = (MAP_HEIGHT - 40) / map_height
+        scale = min(scale_x, scale_y)
+
+        # Center the map (same as in _render_map)
+        offset_x = (MAP_WIDTH - map_width * scale) / 2 - min_x * scale
+        offset_y = (MAP_HEIGHT - map_height * scale) / 2 - min_y * scale
+
+        rooms_dict = {}
+
+        for i, region in enumerate(self._regions):
+            if "geometry" not in region:
+                continue
+
+            geometry = region["geometry"]
+            if geometry.get("type") != "polygon":
+                continue
+
+            # Get coordinates by ID references
+            polygon_ids = geometry.get("ids", [])
+            room_id = region.get("region_id", str(i))
+            room_name = region.get("name", f"Room {i + 1}")
+
+            # Process all polygons for this room to get outline
+            room_outline = []
+            for polygon_id_list in polygon_ids:
+                if not isinstance(polygon_id_list, list):
+                    continue
+
+                # Find coordinates for this polygon
+                polygon_coords = []
+                for coord_id in polygon_id_list:
+                    coord = self._find_coordinate_by_id(coord_id)
+                    if coord:
+                        # Transform coordinate to map image space
+                        img_x = coord[0] * scale + offset_x
+                        img_y = MAP_HEIGHT - (coord[1] * scale + offset_y)  # Flip Y axis
+                        polygon_coords.append([int(img_x), int(img_y)])
+
+                if len(polygon_coords) >= 3:
+                    room_outline.extend(polygon_coords)
+
+            if room_outline:
+                # Calculate center point for icon/label placement
+                x_sum = sum(coord[0] for coord in room_outline)
+                y_sum = sum(coord[1] for coord in room_outline)
+                center_x = int(x_sum / len(room_outline))
+                center_y = int(y_sum / len(room_outline))
+
+                # Create room configuration similar to the vacuum card format
+                rooms_dict[room_id] = {
+                    "name": room_name,
+                    "icon": "mdi:broom",
+                    "x": center_x,
+                    "y": center_y,
+                    "outline": room_outline,
+                }
+
+        return rooms_dict if rooms_dict else None
+
+    @property
+    def calibration(self) -> list[dict[str, dict[str, int]]] | None:
         """Return calibration points for vacuum card integration."""
         if not self._points2d or not self._regions:
             return None
