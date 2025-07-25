@@ -552,11 +552,11 @@ class RoombaMapCamera(Camera):
             "clean_zones_count": len(self._clean_zones),
             "observed_zones_count": len(self._observed_zones),
             "points_count": len(self._points2d),
-            "calibration": self.calibration,
+            "calibration_points": self.calibration_points,
         }
 
     @property
-    def calibration(self) -> list[dict[str, dict[str, int]]] | None:
+    def calibration_points(self) -> list[dict[str, dict[str, int]]] | None:
         """Return calibration points for vacuum card integration."""
         if not self._points2d or not self._regions:
             return None
