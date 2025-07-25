@@ -552,4 +552,73 @@ class RoombaMapCamera(Camera):
             "clean_zones_count": len(self._clean_zones),
             "observed_zones_count": len(self._observed_zones),
             "points_count": len(self._points2d),
+            "calibration": self.calibration,
         }
+
+    @property
+    def calibration(self) -> list[dict[str, dict[str, int]]] | None:
+        """Return calibration points for vacuum card integration."""
+        if not self._points2d or not self._regions:
+            return None
+
+        # Calculate map bounds from points2d
+        all_coords = [
+            point["coordinates"]
+            for point in self._points2d
+            if "coordinates" in point and len(point["coordinates"]) >= 2
+        ]
+
+        if not all_coords:
+            return None
+
+        # Find min/max coordinates to determine map bounds
+        x_coords = [coord[0] for coord in all_coords]
+        y_coords = [coord[1] for coord in all_coords]
+
+        min_x, max_x = min(x_coords), max(x_coords)
+        min_y, max_y = min(y_coords), max(y_coords)
+
+        map_width = max_x - min_x
+        map_height = max_y - min_y
+
+        if map_width <= 0 or map_height <= 0:
+            return None
+
+        # Calculate scale to fit image (same as in _render_map)
+        scale_x = (MAP_WIDTH - 40) / map_width
+        scale_y = (MAP_HEIGHT - 40) / map_height
+        scale = min(scale_x, scale_y)
+
+        # Center the map (same as in _render_map)
+        offset_x = (MAP_WIDTH - map_width * scale) / 2 - min_x * scale
+        offset_y = (MAP_HEIGHT - map_height * scale) / 2 - min_y * scale
+
+        # Define calibration center and differential (similar to built-in method)
+        # Use center of the vacuum coordinate space
+        calibration_center_x = (min_x + max_x) / 2
+        calibration_center_y = (min_y + max_y) / 2
+        # Use a reasonable differential (about 1/4 of the map size)
+        calibration_diff_x = map_width / 4
+        calibration_diff_y = map_height / 4
+
+        # Create three calibration points (center, center+diff_x, center+diff_y)
+        vacuum_points = [
+            (calibration_center_x, calibration_center_y),
+            (calibration_center_x + calibration_diff_x, calibration_center_y),
+            (calibration_center_x, calibration_center_y + calibration_diff_y),
+        ]
+
+        calibration_points = []
+        for vacuum_x, vacuum_y in vacuum_points:
+            # Transform vacuum coordinates to image coordinates
+            img_x = vacuum_x * scale + offset_x
+            img_y = MAP_HEIGHT - (vacuum_y * scale + offset_y)  # Flip Y axis
+
+            calibration_points.append(
+                {
+                    "vacuum": {"x": int(vacuum_x), "y": int(vacuum_y)},
+                    "map": {"x": int(img_x), "y": int(img_y)},
+                }
+            )
+
+        return calibration_points
