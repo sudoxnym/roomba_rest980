@@ -111,11 +111,24 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             regions = []
 
             # Check if we have room selection switches available
-            if hasattr(self, "_selected_rooms") and self._selected_rooms:
+            domain_data = self.hass.data.get(DOMAIN, {})
+            selected_rooms = []
+
+            # Find all room switches that are turned on
+            for key, entity in domain_data.items():
+                if (
+                    key.startswith("switch.")
+                    and hasattr(entity, "is_on")
+                    and entity.is_on
+                ):
+                    selected_rooms.append(entity)
+
+            # If we have specific rooms selected, use targeted cleaning
+            if selected_rooms:
                 # Build regions list from selected rooms
                 regions = [
                     room.get_region_json()
-                    for room in self._selected_rooms
+                    for room in selected_rooms
                     if hasattr(room, "get_region_json")
                 ]
 

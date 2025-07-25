@@ -1,9 +1,11 @@
 """Switches needed."""
 
+import logging
+
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
-import logging
+
 from .const import DOMAIN, regionTypeMappings
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,20 +71,13 @@ class RoomSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Yes."""
         self._is_on = True
-        if self not in order_switched:
-            order_switched.append(self)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """No."""
         self._is_on = False
-        if self in order_switched:
-            order_switched.remove(self)
         self.async_write_ha_state()
 
     def get_region_json(self):
         """Return robot-readable JSON to identify the room to start cleaning it."""
         return self._room_json
-
-
-order_switched: list[RoomSwitch] = []

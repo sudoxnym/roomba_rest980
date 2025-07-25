@@ -1,10 +1,12 @@
 """Buttons needed."""
 
+import logging
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
-import logging
-from .const import DOMAIN, regionTypeMappings
+
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

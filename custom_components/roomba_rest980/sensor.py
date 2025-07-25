@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, cleanBaseMappings, jobInitiatorMappings, phaseMappings
-from .RoombaSensor import RoombaSensor, RoombaCloudSensor
+from .RoombaSensor import RoombaCloudSensor, RoombaSensor
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -2,13 +2,15 @@
 
 import logging
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
 from .const import DOMAIN
-from .coordinator import RoombaDataCoordinator, RoombaCloudCoordinator
-import voluptuous as vol
+from .coordinator import RoombaCloudCoordinator, RoombaDataCoordinator
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -103,7 +105,7 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Safely remove Roombas."""
     await hass.config_entries.async_unload_platforms(
-        entry, ["vacuum", "sensor", "switch"]
+        entry, ["vacuum", "sensor", "switch", "button", "camera"]
     )
     hass.data[DOMAIN].pop(entry.entry_id + "_coordinator")
     return True
@@ -125,7 +127,7 @@ async def _async_setup_cloud(
             await _async_match_blid(hass, entry, coordinator, cloud_coordinator)
 
         await hass.config_entries.async_forward_entry_setups(
-            entry, ["switch", "button"]
+            entry, ["switch", "button", "camera"]
         )
 
     except Exception as e:  # pylint: disable=broad-except

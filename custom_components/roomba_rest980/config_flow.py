@@ -1,13 +1,14 @@
 """The configuration flow for the robot."""
 
-import voluptuous as vol
 import asyncio
+
+import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN
 from .CloudApi import iRobotCloudApi
+from .const import DOMAIN
 
 SCHEMA = vol.Schema(
     {

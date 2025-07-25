@@ -3,19 +3,24 @@
 Based on reverse engineering of the iRobot mobile app.
 """
 
+import aiofiles
+from datetime import UTC, datetime
 import hashlib
 import hmac
+import json
 import logging
+from pathlib import Path
+from typing import Any
 import urllib.parse
 import uuid
-from datetime import UTC, datetime
-from typing import Any
-import asyncio
-import json
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
+
+# Debug: Save UMF data to file for analysis
+DEBUG_SAVE_UMF = True
+DEBUG_UMF_PATH = Path("/workspaces/ha-core/config/debug_umf_data.json")
 
 
 class CloudApiError(Exception):
@@ -437,7 +442,12 @@ class iRobotCloudApi:
         url = f"{self.deployment['httpBaseAuth']}/v1/{blid}/pmaps/{pmap_id}/versions/{version_id}/umf"
         params = {"activeDetails": "2"}
 
-        return await self._aws_request(url, params)
+        umf_data = await self._aws_request(url, params)
+
+        # Save UMF data for debugging/camera development
+        await self._save_umf_data_for_debug(pmap_id, umf_data)
+
+        return umf_data
 
     async def get_favorites(self) -> dict[str, Any]:
         """Get favorite cleaning routines."""
@@ -491,6 +501,49 @@ class iRobotCloudApi:
 
         all_data["favorites"] = await self.get_favorites()
         return all_data
+
+    async def _save_umf_data_for_debug(
+        self, pmap_id: str, umf_data: dict[str, Any]
+    ) -> None:
+        """Save UMF data to file for debugging purposes."""
+        if not DEBUG_SAVE_UMF:
+            return
+
+        try:
+            # Create debug data structure
+            debug_data = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "pmap_id": pmap_id,
+                "umf_data": umf_data,
+            }
+
+            # Load existing data if file exists
+            existing_data = []
+            if DEBUG_UMF_PATH.exists():
+                try:
+                    async with aiofiles.open(DEBUG_UMF_PATH) as f:
+                        content = await f.read()
+                        existing_data = json.loads(content)
+                        if not isinstance(existing_data, list):
+                            existing_data = [existing_data]
+                except (json.JSONDecodeError, OSError):
+                    existing_data = []
+
+            # Add new data
+            existing_data.append(debug_data)
+
+            # Keep only the latest 10 entries to avoid huge files
+            if len(existing_data) > 10:
+                existing_data = existing_data[-10:]
+
+            # Save back to file
+            async with aiofiles.open(DEBUG_UMF_PATH, "w") as f:
+                await f.write(json.dumps(existing_data, indent=2, default=str))
+
+            _LOGGER.debug("Saved UMF data for pmap %s to %s", pmap_id, DEBUG_UMF_PATH)
+
+        except (OSError, json.JSONEncodeError) as e:
+            _LOGGER.warning("Failed to save UMF debug data: %s", e)
 
 
 """
@@ -602,4 +655,5 @@ active_pmapv_details:
         quality:
           confidence: 70
         related_objects:
-          - '10482956"""
+          - '1048295640'
+"""
