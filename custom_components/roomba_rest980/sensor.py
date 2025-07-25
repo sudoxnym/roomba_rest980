@@ -288,17 +288,27 @@ class RoombaMissionStartTime(RoombaSensor):
         """Update sensor when coordinator data changes."""
         data = self.coordinator.data or {}
         status = data.get("cleanMissionStatus", {})
-        missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
+        # Mission State
+        phase = status.get("phase")
+        battery = data.get("batPct")
 
-        if missionStartTime:
-            self._attr_available = True
-            try:
-                self._attr_native_value = dt_util.utc_from_timestamp(missionStartTime)
-            except (TypeError, ValueError):
-                self._attr_native_value = None
-        else:
-            self._attr_native_value = None
+        if phase == "charge" and battery == 100:
             self._attr_available = False
+            self._attr_native_value = None
+        else:
+            missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
+
+            if missionStartTime:
+                self._attr_available = True
+                try:
+                    self._attr_native_value = dt_util.utc_from_timestamp(
+                        missionStartTime
+                    )
+                except (TypeError, ValueError):
+                    self._attr_native_value = None
+            else:
+                self._attr_native_value = None
+                self._attr_available = False
 
         self.async_write_ha_state()
 
