@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, regionTypeMappings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -622,7 +622,9 @@ class RoombaMapCamera(Camera):
                     if coord:
                         # Transform coordinate to map image space
                         img_x = coord[0] * scale + offset_x
-                        img_y = MAP_HEIGHT - (coord[1] * scale + offset_y)  # Flip Y axis
+                        img_y = MAP_HEIGHT - (
+                            coord[1] * scale + offset_y
+                        )  # Flip Y axis
                         polygon_coords.append([int(img_x), int(img_y)])
 
                 if len(polygon_coords) >= 3:
@@ -635,10 +637,16 @@ class RoombaMapCamera(Camera):
                 center_x = int(x_sum / len(room_outline))
                 center_y = int(y_sum / len(room_outline))
 
+                # Get the appropriate icon based on region type
+                region_type = region.get("region_type", "default")
+                icon = regionTypeMappings.get(
+                    region_type, regionTypeMappings.get("default")
+                )
+
                 # Create room configuration similar to the vacuum card format
                 rooms_dict[room_id] = {
                     "name": room_name,
-                    "icon": "mdi:broom",
+                    "icon": icon,
                     "x": center_x,
                     "y": center_y,
                     "outline": room_outline,
