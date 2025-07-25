@@ -597,9 +597,9 @@ class RoombaMapCamera(Camera):
         # Use center of the vacuum coordinate space
         calibration_center_x = (min_x + max_x) / 2
         calibration_center_y = (min_y + max_y) / 2
-        # Use a reasonable differential (about 1/4 of the map size)
-        calibration_diff_x = map_width / 4
-        calibration_diff_y = map_height / 4
+        # Use a smaller differential for finer calibration (about 1/8 of the map size)
+        calibration_diff_x = map_width / 8
+        calibration_diff_y = map_height / 8
 
         # Create three calibration points (center, center+diff_x, center+diff_y)
         vacuum_points = [
