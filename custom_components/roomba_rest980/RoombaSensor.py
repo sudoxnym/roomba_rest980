@@ -31,6 +31,20 @@ class RoombaSensor(CoordinatorEntity, SensorEntity):
             "manufacturer": "iRobot",
         }
 
+    def isMissionActive(self) -> bool:
+        """Return whether or not there is a mission in progress."""
+        data = self.coordinator.data or {}
+        status = data.get("cleanMissionStatus", {})
+        # Mission State
+        phase = status.get("phase")
+        battery = data.get("batPct")
+        state = False
+        if status.get("mssnStrtTm"):
+            state = True
+        if phase == "charge" and battery == 100:
+            state = False
+        return state
+
     def returnIn(self, mapping: dict[str, str], index: str) -> str:
         """Default or map value."""
         mapping.get(index, index)

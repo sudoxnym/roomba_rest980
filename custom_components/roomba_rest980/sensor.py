@@ -286,16 +286,12 @@ class RoombaMissionStartTime(RoombaSensor):
 
     def _handle_coordinator_update(self):
         """Update sensor when coordinator data changes."""
-        data = self.coordinator.data or {}
-        status = data.get("cleanMissionStatus", {})
-        # Mission State
-        phase = status.get("phase")
-        battery = data.get("batPct")
-
-        if phase == "charge" and battery == 100:
+        if not self.isMissionActive():
             self._attr_available = False
             self._attr_native_value = None
         else:
+            data = self.coordinator.data or {}
+            status = data.get("cleanMissionStatus", {})
             missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
 
             if missionStartTime:
@@ -327,23 +323,27 @@ class RoombaMissionElapsedTime(RoombaSensor):
 
     def _handle_coordinator_update(self):
         """Update sensor when coordinator data changes."""
-        data = self.coordinator.data or {}
-        status = data.get("cleanMissionStatus", {})
-        missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
-
-        if missionStartTime:
-            self._attr_available = True
-            try:
-                elapsed_time = dt_util.utcnow() - dt_util.utc_from_timestamp(
-                    missionStartTime
-                )
-                # Convert timedelta to minutes
-                self._attr_native_value = elapsed_time.total_seconds() / 60
-            except (TypeError, ValueError):
-                self._attr_native_value = None
-        else:
-            self._attr_native_value = None
+        if not self.isMissionActive():
             self._attr_available = False
+            self._attr_native_value = None
+        else:
+            data = self.coordinator.data or {}
+            status = data.get("cleanMissionStatus", {})
+            missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
+
+            if missionStartTime:
+                self._attr_available = True
+                try:
+                    elapsed_time = dt_util.utcnow() - dt_util.utc_from_timestamp(
+                        missionStartTime
+                    )
+                    # Convert timedelta to minutes
+                    self._attr_native_value = elapsed_time.total_seconds() / 60
+                except (TypeError, ValueError):
+                    self._attr_native_value = None
+            else:
+                self._attr_native_value = None
+                self._attr_available = False
 
         self.async_write_ha_state()
 
@@ -363,12 +363,14 @@ class RoombaRechargeTime(RoombaSensor):
         """Update sensor when coordinator data changes."""
         data = self.coordinator.data or {}
         status = data.get("cleanMissionStatus", {})
-        missionStartTime = status.get("rechrgTm")  # Unix timestamp in seconds?
+        estimatedRechargeTime = status.get("rechrgTm")  # Unix timestamp in seconds?
 
-        if missionStartTime:
+        if estimatedRechargeTime:
             self._attr_available = True
             try:
-                self._attr_native_value = dt_util.utc_from_timestamp(missionStartTime)
+                self._attr_native_value = dt_util.utc_from_timestamp(
+                    estimatedRechargeTime
+                )
             except (TypeError, ValueError):
                 self._attr_native_value = None
         else:
