@@ -13,10 +13,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Create the switches to identify cleanable rooms."""
-    cloudCoordinator = hass.data[DOMAIN][entry.entry_id + "_cloud"]
+    cloudCoordinator = entry.runtime_data.cloud_coordinator
     entities = []
     if cloudCoordinator and cloudCoordinator.data:
-        blid = hass.data[DOMAIN][entry.entry_id + "_blid"]
+        blid = entry.runtime_data.robot_blid
         # Get cloud data for the specific robot
         if blid in cloudCoordinator.data:
             cloud_data = cloudCoordinator.data[blid]
@@ -37,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                             e,
                         )
     for ent in entities:
-        hass.data[DOMAIN][f"switch.{ent.unique_id}"] = ent
+        entry.runtime_data.switched_rooms[f"switch.{ent.unique_id}"] = ent
     async_add_entities(entities)
 
 
@@ -47,7 +47,7 @@ class RoomSwitch(SwitchEntity):
     def __init__(self, entry, name, data) -> None:
         """Creates a switch entity for rooms."""
         self._attr_name = f"Clean {name}"
-        self._attr_unique_id = f"{entry.entry_id}_{data['id']}"
+        self._attr_unique_id = f"{entry.unique_id}_{data['id']}"
         self._is_on = False
         self._room_json = {"region_id": data["id"], "type": "rid"}
         self._attr_entity_category = EntityCategory.CONFIG

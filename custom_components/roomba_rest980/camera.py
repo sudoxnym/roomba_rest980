@@ -46,9 +46,9 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up Roomba map camera."""
-    _LOGGER.debug("Setting up camera platform for entry %s", entry.entry_id)
+    _LOGGER.debug("Setting up camera platform for entry %s", entry.unique_id)
 
-    cloudCoordinator = hass.data[DOMAIN].get(entry.entry_id + "_cloud")
+    cloudCoordinator = entry.runtime_data.cloud_coordinator
 
     if not cloudCoordinator:
         _LOGGER.warning("No cloud coordinator found for camera setup")
@@ -59,7 +59,7 @@ async def async_setup_entry(
         return
 
     entities = []
-    blid = hass.data[DOMAIN].get(entry.entry_id + "_blid", "unknown")
+    blid = entry.runtime_data.robot_blid
     _LOGGER.debug("Using BLID: %s for camera setup", blid)
 
     if blid != "unknown" and blid in cloudCoordinator.data:
@@ -131,7 +131,7 @@ class RoombaMapCamera(Camera):
 
         # Camera attributes
         self._attr_name = f"Roomba Map - {self._map_header.get('name', 'Unknown')}"
-        self._attr_unique_id = f"{entry.entry_id}_map_{pmap_id}"
+        self._attr_unique_id = f"{entry.unique_id}_map_{pmap_id}"
 
         # Device info
         self._attr_device_info = {

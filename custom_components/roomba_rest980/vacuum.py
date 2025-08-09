@@ -8,6 +8,7 @@ from homeassistant.components.vacuum import (
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -28,11 +29,13 @@ SUPPORT_ROBOT = (
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Create the vacuum."""
-    coordinator = hass.data[DOMAIN][entry.entry_id + "_coordinator"]
-    await coordinator.async_config_entry_first_refresh()
-    async_add_entities([RoombaVacuum(hass, coordinator, entry)])
+    async_add_entities(
+        [RoombaVacuum(hass, entry.runtime_data.local_coordinator, entry)]
+    )
 
 
 class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
@@ -44,13 +47,8 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         self.hass = hass
         self._entry: ConfigEntry = entry
         self._attr_supported_features = SUPPORT_ROBOT
-        self._attr_unique_id = f"{entry.unique_id}_vacuum"
+        self._attr_unique_id = f"{entry.entry_id}_vacuum"
         self._attr_name = entry.title
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.unique_id)},
-            "name": entry.title,
-            "manufacturer": "iRobot",
-        }
 
     def _handle_coordinator_update(self):
         """Update all attributes."""
@@ -78,14 +76,20 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
 
         self._attr_available = data != {}
         self._attr_extra_state_attributes = createExtendedAttributes(self)
-        self._attr_device_info = {
-            "identifiers": self._attr_device_info.get("identifiers"),
-            "name": self._attr_device_info.get("name"),
-            "manufacturer": self._attr_device_info.get("manufacturer"),
-            "model": f"Roomba {data.get('sku')}",
-            "sw_version": data.get("softwareVer"),
-        }
         self._async_write_ha_state()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the Roomba's device information."""
+        data = self.coordinator.data or {}
+        return DeviceInfo(
+            identifiers={DOMAIN, self._entry.unique_id},
+            name=data.get("name", "Roomba"),
+            manufacturer="iRobot",
+            model="Roomba",
+            model_id=data.get("sku"),
+            sw_version=data.get("softwareVer"),
+        )
 
     async def async_clean_spot(self, **kwargs):
         """Spot clean."""
@@ -111,7 +115,7 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             regions = []
 
             # Check if we have room selection switches available
-            domain_data = self.hass.data.get(DOMAIN, {})
+            domain_data = self._entry.runtime_data.switched_rooms
             selected_rooms = []
 
             # Find all room switches that are turned on

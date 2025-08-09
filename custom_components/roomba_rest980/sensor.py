@@ -16,13 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Create the sensors needed to poll Roomba's data."""
-    coordinator = hass.data[DOMAIN][entry.entry_id + "_coordinator"]
-    cloudCoordinator = hass.data[DOMAIN][entry.entry_id + "_cloud"]
+    coordinator = entry.runtime_data.local_coordinator
+    cloudCoordinator = entry.runtime_data.cloud_coordinator
 
     # Create cloud pmap entities if cloud data is available
     cloud_entities = []
     if cloudCoordinator and cloudCoordinator.data:
-        blid = hass.data[DOMAIN][entry.entry_id + "_blid"]
+        blid = entry.runtime_data.robot_blid
         # Get cloud data for the specific robot
         if blid in cloudCoordinator.data:
             cloud_data = cloudCoordinator.data[blid]
@@ -136,12 +136,7 @@ class RoombaCloudAttributes(RoombaCloudSensor):
     @property
     def extra_state_attributes(self):
         """Return all the attributes returned by iRobot's cloud."""
-        return (
-            self.coordinator.data.get(
-                self.hass.data[DOMAIN][self._entry.entry_id + "_blid"]
-            )
-            or {}
-        )
+        return self.coordinator.data.get(self._entry.runtime_data.robot_blid) or {}
 
 
 class RoombaCloudPmap(RoombaCloudSensor):

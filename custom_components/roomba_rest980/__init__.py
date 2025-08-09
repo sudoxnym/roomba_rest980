@@ -11,30 +11,66 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 from .coordinator import RoombaCloudCoordinator, RoombaDataCoordinator
+from .switch import RoomSwitch
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
 
+class RoombaRuntimeData:
+    """Setup the runtime data structure."""
+
+    local_coordinator: RoombaDataCoordinator = None
+    robot_blid: str = None
+    cloud_enabled: bool = False
+    cloud_coordinator: RoombaCloudCoordinator = None
+
+    switched_rooms: dict[str, RoomSwitch] = {}
+
+    def __init__(
+        self,
+        local_coordinator: RoombaDataCoordinator,
+        robot_blid: str,
+        cloud_enabled: bool,
+        cloud_coordinator: RoombaCloudCoordinator,
+    ) -> None:
+        """Initialize the class with given data."""
+        self.local_coordinator = local_coordinator
+        self.robot_blid = robot_blid
+        self.cloud_enabled = cloud_enabled
+        self.cloud_coordinator = cloud_coordinator
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Setup Roombas with the Rest980 base url."""
     coordinator = RoombaDataCoordinator(hass, entry)
+    cloud_coordinator: RoombaCloudCoordinator = None
+
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id + "_coordinator"] = coordinator
-    hass.data[DOMAIN][entry.entry_id + "_blid"] = "unknown"
+    entry.runtime_data = RoombaRuntimeData(
+        local_coordinator=coordinator,
+        robot_blid=None,
+        cloud_enabled=entry.data["cloud_api"],
+        cloud_coordinator=cloud_coordinator,
+    )
 
     # Set up cloud coordinator if enabled
     if entry.data["cloud_api"]:
-        cc = RoombaCloudCoordinator(hass, entry)
-        hass.data[DOMAIN][entry.entry_id + "_cloud"] = cc
+        cloud_coordinator = RoombaCloudCoordinator(hass, entry)
+
+        await cloud_coordinator.async_config_entry_first_refresh()
 
         # Start background task for cloud setup and BLID matching
-        hass.async_create_task(_async_setup_cloud(hass, entry, coordinator, cc))
+        hass.async_create_task(
+            _async_setup_cloud(hass, entry, coordinator, cloud_coordinator)
+        )
+
+        # Update runtime data with cloud coordinator
+        entry.runtime_data.cloud_coordinator = cloud_coordinator
     else:
-        hass.data[DOMAIN][entry.entry_id + "_cloud"] = {}
+        cloud_coordinator = None
 
     # Register services
     await _async_register_services(hass)
@@ -107,7 +143,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_unload_platforms(
         entry, ["vacuum", "sensor", "switch", "button", "camera"]
     )
-    hass.data[DOMAIN].pop(entry.entry_id + "_coordinator")
     return True
 
 
@@ -122,9 +157,20 @@ async def _async_setup_cloud(
         # Refresh cloud data
         await cloud_coordinator.async_config_entry_first_refresh()
 
-        # Perform BLID matching if not already stored
-        if "blid" not in entry.data:
-            await _async_match_blid(hass, entry, coordinator, cloud_coordinator)
+        # Perform BLID matching only if not already stored in config entry
+        if "robot_blid" not in entry.data:
+            matched_blid = await _async_match_blid(
+                hass, entry, coordinator, cloud_coordinator
+            )
+            if matched_blid:
+                # Store the matched BLID permanently in config entry data
+                hass.config_entries.async_update_entry(
+                    entry, data={**entry.data, "robot_blid": matched_blid}
+                )
+                entry.runtime_data.robot_blid = matched_blid
+        else:
+            # Use stored BLID from config entry
+            entry.runtime_data.robot_blid = entry.data["robot_blid"]
 
         await hass.config_entries.async_forward_entry_setups(
             entry, ["switch", "button", "camera"]
@@ -132,8 +178,7 @@ async def _async_setup_cloud(
 
     except Exception as e:  # pylint: disable=broad-except
         _LOGGER.error("Failed to set up cloud coordinator: %s", e)
-        # Set empty cloud data so entities can still be created
-        hass.data[DOMAIN][entry.entry_id + "_cloud"] = {}
+        cloud_coordinator = None
 
 
 async def _async_match_blid(
@@ -164,7 +209,7 @@ async def _async_match_blid(
                     and cloud_sw_ver == local_sw_ver
                     and cloud_name == local_name
                 ):
-                    hass.data[DOMAIN][entry.entry_id + "_blid"] = blid
+                    entry.runtime_data.robot_blid = blid
                     _LOGGER.info("Matched local Roomba with cloud robot %s", blid)
                     break
 
