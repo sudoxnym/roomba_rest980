@@ -19,7 +19,7 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 # Debug: Save UMF data to file for analysis
-DEBUG_SAVE_UMF = False
+DEBUG_SAVE_UMF = True
 DEBUG_UMF_PATH = Path("/workspaces/ha-core/config/debug_umf_data.json")
 
 

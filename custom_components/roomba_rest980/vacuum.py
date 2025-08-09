@@ -47,7 +47,7 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         self.hass = hass
         self._entry: ConfigEntry = entry
         self._attr_supported_features = SUPPORT_ROBOT
-        self._attr_unique_id = f"{entry.entry_id}_vacuum"
+        self._attr_unique_id = f"{entry.unique_id}_vacuum"
         self._attr_name = entry.title
 
     def _handle_coordinator_update(self):
@@ -83,7 +83,7 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
         """Return the Roomba's device information."""
         data = self.coordinator.data or {}
         return DeviceInfo(
-            identifiers={DOMAIN, self._entry.unique_id},
+            identifiers={(DOMAIN, self._entry.unique_id)},
             name=data.get("name", "Roomba"),
             manufacturer="iRobot",
             model="Roomba",

@@ -34,7 +34,7 @@ CLOUD_SCHEMA = vol.Schema(
 class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     _proposed_name: str
     _user_data: dict[str, any]

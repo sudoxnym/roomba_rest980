@@ -33,7 +33,7 @@ class RoombaSensor(CoordinatorEntity, SensorEntity):
         """Return the Roomba's device information."""
         data = self.coordinator.data or {}
         return DeviceInfo(
-            identifiers={DOMAIN, self._entry.unique_id},
+            identifiers={(DOMAIN, self._entry.unique_id)},
             name=data.get("name", "Roomba"),
             manufacturer="iRobot",
             model="Roomba",
@@ -86,7 +86,7 @@ class RoombaCloudSensor(CoordinatorEntity, SensorEntity):
         """Return the Roomba's device information."""
         data = self.coordinator.data or {}
         return DeviceInfo(
-            identifiers={DOMAIN, self._entry.unique_id},
+            identifiers={(DOMAIN, self._entry.unique_id)},
             name=data.get("name", "Roomba"),
             manufacturer="iRobot",
             model="Roomba",

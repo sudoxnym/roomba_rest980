@@ -35,7 +35,7 @@ class FavoriteButton(ButtonEntity):
         """Creates a button entity for entries."""
         self._attr_name = f"{data['name']}"
         self._entry = entry
-        self._attr_unique_id = f"{entry.unique_id}_{data['favorite_id']}"
+        self._attr_unique_id = f"{entry.entry_id}_{data['favorite_id']}"
         self._attr_entity_category = EntityCategory.CONFIG
         self._attr_extra_state_attributes = data
         self._data = data

@@ -2,7 +2,10 @@
 
 from datetime import datetime
 
+from homeassistant.helpers import issue_registry as ir
+
 from .const import (
+    DOMAIN,
     binMappings,
     cleanBaseMappings,
     cycleMappings,
@@ -129,6 +132,7 @@ def createExtendedAttributes(self) -> dict[str, any]:
             robotCleanMode = "Auto"
     else:
         robotCleanMode = "n-a"
+
     return {
         "extendedStatus": extv,
         "notready_msg": notReadyMappings.get(notReady, notReady),
