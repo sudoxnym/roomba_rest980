@@ -14,6 +14,8 @@ from typing import Any
 import urllib.parse
 import uuid
 
+from json.decoder import JSONDecodeError
+
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -230,7 +232,7 @@ class iRobotCloudApi:
 
             try:
                 login_result = json.loads(response_text)
-            except json.JSONDecodeError as e:
+            except JSONDecodeError as e:
                 raise AuthenticationError(
                     f"Invalid JSON response from Gigya login: {response_text}"
                 ) from e
@@ -328,7 +330,7 @@ class iRobotCloudApi:
 
             try:
                 login_result = json.loads(response_text)
-            except json.JSONDecodeError as e:
+            except JSONDecodeError as e:
                 raise AuthenticationError(
                     f"Invalid JSON response from iRobot login: {response_text}"
                 ) from e
@@ -526,7 +528,7 @@ class iRobotCloudApi:
                         existing_data = json.loads(content)
                         if not isinstance(existing_data, list):
                             existing_data = [existing_data]
-                except (json.JSONDecodeError, OSError):
+                except (JSONDecodeError, OSError):
                     existing_data = []
 
             # Add new data
