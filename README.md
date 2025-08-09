@@ -8,7 +8,8 @@ Still work in progress, but the vacuum entity has been fully ported over.
 
 - [x] Attribute parity with jeremywillans' YAML entry
 - [x] Cloud API connection
-  - [ ] Cloud MQTT connection
+  - [x] Cloud MQTT connection
+    - ONLY IN TESTING RIGHT NOW! I've reverse engineered their MQTT stack (but not all available commands) and will be releasing a better writeup later
 - [x] Actions
   - [x] Start
     - [x] Favorites
@@ -56,9 +57,11 @@ First, you must gather your robot's on-device password and BLID (identifier).
   For Docker users
   </summary>
 Execute this command:  
+  
 ```sh
 docker run -it node sh -c "npm install -g dorita980 && get-roomba-password <robotIP>"
 ```
+
 and follow the on-screen instructions.
 </details>
 
