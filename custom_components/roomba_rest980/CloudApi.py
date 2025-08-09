@@ -544,7 +544,7 @@ class iRobotCloudApi:
 
             _LOGGER.debug("Saved UMF data for pmap %s to %s", pmap_id, DEBUG_UMF_PATH)
 
-        except (OSError, json.JSONEncodeError) as e:
+        except (OSError, Exception) as e:
             _LOGGER.warning("Failed to save UMF debug data: %s", e)
 
 
