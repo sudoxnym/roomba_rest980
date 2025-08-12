@@ -63,13 +63,14 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
             self._attr_activity = VacuumActivity.IDLE
         if not_ready and not_ready > 0:
             self._attr_activity = VacuumActivity.ERROR
-        if cycle in ["clean", "quick", "spot", "train"]:
+        if cycle in ["clean", "quick", "spot", "train"] or phase in {"hwMidMsn"}:
             self._attr_activity = VacuumActivity.CLEANING
-        if cycle in ["evac", "dock"]:  # Emptying Roomba Bin to Dock, Entering Dock
+        if cycle in ["evac", "dock"] or phase in {
+            "charge",
+        }:  # Emptying Roomba Bin to Dock, Entering Dock
             self._attr_activity = VacuumActivity.DOCKED
         if phase in {
             "hmUsrDock",
-            "hwMidMsn",
             "hmPostMsn",
         }:  # Sent Home, Mid Dock, Final Dock
             self._attr_activity = VacuumActivity.RETURNING
