@@ -8,8 +8,8 @@ from homeassistant.components.vacuum import (
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -165,12 +165,10 @@ class RoombaVacuum(CoordinatorEntity, StateVacuumEntity):
                     },
                     blocking=True,
                 )
-        except (KeyError, AttributeError, ValueError) as e:
+        except (KeyError, AttributeError, ValueError, Exception) as e:
             _LOGGER.error("Failed to start cleaning due to configuration error: %s", e)
-        except Exception as e:  # pylint: disable=broad-except
-            _LOGGER.error("Failed to start cleaning: %s", e)
 
-    async def async_stop(self):
+    async def async_stop(self) -> None:
         """Stop the action."""
         await self.hass.services.async_call(
             DOMAIN,

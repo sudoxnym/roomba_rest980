@@ -8,7 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, cleanBaseMappings, jobInitiatorMappings, phaseMappings
+from .const import (
+    cleanBaseMappings,
+    errorMappings,
+    jobInitiatorMappings,
+    notReadyMappings,
+    phaseMappings,
+)
 from .RoombaSensor import RoombaCloudSensor, RoombaSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                         )
     if cloud_entities:
         async_add_entities(cloud_entities)
-
+    entry.runtime_data.err = RoombaError(coordinator, entry)
     async_add_entities(
         [
             RoombaAttributes(coordinator, entry),
@@ -60,6 +66,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             RoombaCarpetBoostMode(coordinator, entry),
             RoombaCleanEdges(coordinator, entry),
             RoombaCleanMode(coordinator, entry),
+            RoombaNotReady(coordinator, entry),
+            entry.runtime_data.err,
             RoombaCloudAttributes(cloudCoordinator, entry),
         ],
         update_before_add=True,
@@ -106,11 +114,19 @@ class RoombaBatterySensor(RoombaSensor):
 class RoombaAttributes(RoombaSensor):
     """A simple sensor that returns all given datapoints without modification."""
 
-    _rs_given_info = ("Attributes", "attributes")
+    _rs_given_info = ("Local Raw Attributes", "attributes")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Create the sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_icon = "mdi:lan-connect"
+        self._attr_entity_registry_enabled_default = True
 
     def _handle_coordinator_update(self):
         """Update sensor when coordinator data changes."""
-        self._attr_native_value = "OK" if self.coordinator.data else "Unavailable"
+        self._attr_native_value = (
+            "Available" if self.coordinator.data else "Unavailable"
+        )
         self.async_write_ha_state()
 
     @property
@@ -122,15 +138,19 @@ class RoombaAttributes(RoombaSensor):
 class RoombaCloudAttributes(RoombaCloudSensor):
     """A simple sensor that returns all given datapoints without modification."""
 
-    _rs_given_info = ("Cloud Attributes", "cloud_attributes")
+    _rs_given_info = ("Cloud Raw Attributes", "cloud_attributes")
 
     def __init__(self, coordinator, entry) -> None:
-        """Initialize."""
+        """Create the sensor."""
         super().__init__(coordinator, entry)
+        self._attr_icon = "mdi:cloud-braces"
+        self._attr_entity_registry_enabled_default = True
 
     def _handle_coordinator_update(self):
         """Update sensor when coordinator data changes."""
-        self._attr_native_value = "OK" if self.coordinator.data else "Unavailable"
+        self._attr_native_value = (
+            "Available" if self.coordinator.data else "Unavailable"
+        )
         self.async_write_ha_state()
 
     @property
@@ -327,15 +347,16 @@ class RoombaMissionElapsedTime(RoombaSensor):
             missionStartTime = status.get("mssnStrtTm")  # Unix timestamp in seconds?
 
             if missionStartTime:
-                self._attr_available = True
-                try:
-                    elapsed_time = dt_util.utcnow() - dt_util.utc_from_timestamp(
-                        missionStartTime
-                    )
-                    # Convert timedelta to minutes
-                    self._attr_native_value = elapsed_time.total_seconds() / 60
-                except (TypeError, ValueError):
-                    self._attr_native_value = None
+                if missionStartTime != 0:
+                    self._attr_available = True
+                    try:
+                        elapsed_time = dt_util.utcnow() - dt_util.utc_from_timestamp(
+                            missionStartTime
+                        )
+                        # Convert timedelta to minutes
+                        self._attr_native_value = elapsed_time.total_seconds() / 60
+                    except (TypeError, ValueError):
+                        self._attr_native_value = None
             else:
                 self._attr_native_value = None
                 self._attr_available = False
@@ -361,13 +382,14 @@ class RoombaRechargeTime(RoombaSensor):
         estimatedRechargeTime = status.get("rechrgTm")  # Unix timestamp in seconds?
 
         if estimatedRechargeTime:
-            self._attr_available = True
-            try:
-                self._attr_native_value = dt_util.utc_from_timestamp(
-                    estimatedRechargeTime
-                )
-            except (TypeError, ValueError):
-                self._attr_native_value = None
+            if estimatedRechargeTime != 0:
+                self._attr_available = True
+                try:
+                    self._attr_native_value = dt_util.utc_from_timestamp(
+                        estimatedRechargeTime
+                    )
+                except (TypeError, ValueError):
+                    self._attr_native_value = None
         else:
             self._attr_native_value = None
             self._attr_available = False
@@ -434,6 +456,48 @@ class RoombaCleanEdges(RoombaSensor):
         self.async_write_ha_state()
 
 
+class RoombaError(RoombaSensor):
+    """Read the error message of the Roomba."""
+
+    _rs_given_info = ("Error", "error")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Create a new error sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = list(errorMappings.values())
+        self._attr_icon = "mdi:robot-vacuum-alert"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        nr = data.get("cleanMissionStatus", {}).get("error")
+        self._attr_native_value = errorMappings.get(nr, nr)
+
+        self.async_write_ha_state()
+
+
+class RoombaNotReady(RoombaSensor):
+    """Read the not ready message of the Roomba."""
+
+    _rs_given_info = ("Not Ready", "not_ready")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Create a new not_ready sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = list(notReadyMappings.values())
+        self._attr_icon = "mdi:clock-alert"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        nr = data.get("cleanMissionStatus", {}).get("notReady")
+        self._attr_native_value = notReadyMappings.get(nr, nr)
+
+        self.async_write_ha_state()
+
+
 class RoombaCleanMode(RoombaSensor):
     """Read the clean mode of the Roomba."""
 
@@ -482,12 +546,13 @@ class RoombaMissionExpireTime(RoombaSensor):
         expireTime = status.get("expireTm")  # Unix timestamp in seconds?
 
         if expireTime:
-            self._attr_available = True
-            try:
-                self._attr_native_value = dt_util.utc_from_timestamp(expireTime)
-            except (TypeError, ValueError):
-                self._attr_native_value = None
-                self._attr_available = False
+            if expireTime != 0:
+                self._attr_available = True
+                try:
+                    self._attr_native_value = dt_util.utc_from_timestamp(expireTime)
+                except (TypeError, ValueError):
+                    self._attr_native_value = None
+                    self._attr_available = False
         else:
             self._attr_native_value = None
             self._attr_available = False

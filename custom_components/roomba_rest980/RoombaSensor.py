@@ -3,10 +3,10 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers import device_registry as dr
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)

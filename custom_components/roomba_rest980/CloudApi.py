@@ -3,19 +3,18 @@
 Based on reverse engineering of the iRobot mobile app.
 """
 
-import aiofiles
 from datetime import UTC, datetime
 import hashlib
 import hmac
 import json
+from json.decoder import JSONDecodeError
 import logging
 from pathlib import Path
 from typing import Any
 import urllib.parse
 import uuid
 
-from json.decoder import JSONDecodeError
-
+import aiofiles
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -152,7 +151,10 @@ class iRobotCloudApi:
     """iRobot Cloud API client for authentication and data retrieval."""
 
     def __init__(
-        self, username: str, password: str, session: aiohttp.ClientSession | None = None
+        self,
+        username: str,
+        password: str,
+        session: aiohttp.ClientSession | None = None,
     ):
         """Initialize iRobot Cloud API client with credentials."""
         self.username = username
@@ -340,9 +342,10 @@ class iRobotCloudApi:
 
             # Check if required keys exist
             if "credentials" not in login_result:
-                raise AuthenticationError(
-                    f"Missing 'credentials' in login response: {login_result}"
-                )
+                msg = login_result["errorMessage"] or login_result
+                if "mqtt slot" in msg:
+                    msg = f"The cloud authentication has been rate-limited. Try closing the iRobot app or trying again later. ({login_result['errorMessage']})"
+                raise AuthenticationError(f"{msg}")
 
             if "robots" not in login_result:
                 raise AuthenticationError(
@@ -546,116 +549,3 @@ class iRobotCloudApi:
 
         except (OSError, Exception) as e:
             _LOGGER.warning("Failed to save UMF debug data: %s", e)
-
-
-"""
-
-active_pmapv_details:
-    active_pmapv:
-      pmap_id: BGQxV6zGTmCsalWFHr-S5g
-      pmapv_id: 250720T215523
-      create_time: 1753048538
-      proc_state: OK_Processed
-      creator: robot
-      nMssn: 1182
-      mission_id: 01K0MC4XWG0DKT67MCSGGG4924
-      learning_percentage: 100
-      last_user_pmapv_id: 250718T074805
-      last_user_ts: 1752824885
-      shareability: 1
-      robot_cap:
-        maps: 3
-        pmaps: 10
-      robot_id: B61489C9D5104793AFEA1F26C91B61DF
-    map_header:
-      id: BGQxV6zGTmCsalWFHr-S5g
-      version: 250720T215523
-      name: Main Floor
-      learning_percentage: 100
-      create_time: 1753048538
-      resolution: 0.105
-      user_orientation_rad: 1.5634
-      robot_orientation_rad: 3.1457
-      area: 38.1418
-      nmssn: 1182
-      mission_id: 01K0MC4XWG0DKT67MCSGGG4924
-    regions:
-      - id: '11'
-        name: Kitchen
-        region_type: kitchen
-        policies:
-          odoa_mode: 0
-          odoa_feats: {}
-          disabled_operating_modes: 0
-          override_operating_modes: 0
-        time_estimates:
-          - unit: seconds
-            estimate: 420
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: true
-          - unit: seconds
-            estimate: 210
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: false
-      - id: '15'
-        name: ''
-        region_type: unspecified
-        policies:
-          odoa_mode: 0
-          odoa_feats: {}
-          disabled_operating_modes: 0
-          override_operating_modes: 0
-        time_estimates:
-          - unit: seconds
-            estimate: 458
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: true
-          - unit: seconds
-            estimate: 229
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: false
-      - id: '10'
-        name: Hallway
-        region_type: hallway
-        policies:
-          odoa_mode: 0
-          odoa_feats: {}
-          disabled_operating_modes: 0
-          override_operating_modes: 0
-        time_estimates:
-          - unit: seconds
-            estimate: 1282
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: true
-          - unit: seconds
-            estimate: 641
-            confidence: GOOD_CONFIDENCE
-            params:
-              noAutoPasses: true
-              twoPass: false
-    zones: []
-    keepoutzones: []
-    observed_zones:
-      - id: '1449649421'
-        extent_type: rug
-        quality:
-          confidence: 70
-        related_objects:
-          - '1449649421'
-      - id: '1048295640'
-        extent_type: rug
-        quality:
-          confidence: 70
-        related_objects:
-          - '1048295640'
-"""

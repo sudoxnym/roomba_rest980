@@ -39,6 +39,10 @@ class RoombaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     _proposed_name: str
     _user_data: dict[str, any]
 
+    async def async_step_reauth(self, entry_data: dict[str, any]) -> ConfigFlowResult:
+        """Perform reauth upon an API authentication error."""
+        await self.hass.config_entries.async_reload(self._reauth_entry_id)
+
     async def async_step_cloud(self, user_input=None) -> ConfigFlowResult:
         """Show user the setup for the cloud API."""
         if user_input is not None:

@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from homeassistant.components.camera import Camera
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, regionTypeMappings
@@ -130,15 +131,26 @@ class RoombaMapCamera(Camera):
             self._observed_zones = []
 
         # Camera attributes
-        self._attr_name = f"Roomba Map - {self._map_header.get('name', 'Unknown')}"
+        name = self._map_header.get("name", "Unknown")
+        if len(name) == 0:
+            name = "New Map"
+
+        self._attr_name = name
         self._attr_unique_id = f"{entry.entry_id}_map_{pmap_id}"
 
-        # Device info
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.unique_id)},
-            "name": entry.title,
-            "manufacturer": "iRobot",
-        }
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the Roomba's device information."""
+        data = self._coordinator.data or {}
+        rdata = data[self._entry.runtime_data.robot_blid]["robot_info"]
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.unique_id)},
+            name=rdata["name"],
+            manufacturer="iRobot",
+            model="Roomba",
+            model_id=rdata["sku"],
+            sw_version=rdata["softwareVer"],
+        )
 
     def camera_image(
         self, width: int | None = None, height: int | None = None
@@ -171,52 +183,47 @@ class RoombaMapCamera(Camera):
             y = (MAP_HEIGHT - text_height) // 2
             draw.text((x, y), text, fill=TEXT_COLOR, font=font)
 
-        else:
-            # Calculate map bounds from points2d
-            if self._points2d:
-                # Extract all coordinates
-                all_coords = [
-                    point["coordinates"]
-                    for point in self._points2d
-                    if "coordinates" in point
-                ]
+        # Calculate map bounds from points2d
+        elif self._points2d:
+            # Extract all coordinates
+            all_coords = [
+                point["coordinates"]
+                for point in self._points2d
+                if "coordinates" in point
+            ]
 
-                if all_coords:
-                    # Find min/max coordinates
-                    x_coords = [coord[0] for coord in all_coords if len(coord) >= 2]
-                    y_coords = [coord[1] for coord in all_coords if len(coord) >= 2]
+            if all_coords:
+                # Find min/max coordinates
+                x_coords = [coord[0] for coord in all_coords if len(coord) >= 2]
+                y_coords = [coord[1] for coord in all_coords if len(coord) >= 2]
 
-                    if x_coords and y_coords:
-                        min_x, max_x = min(x_coords), max(x_coords)
-                        min_y, max_y = min(y_coords), max(y_coords)
+                if x_coords and y_coords:
+                    min_x, max_x = min(x_coords), max(x_coords)
+                    min_y, max_y = min(y_coords), max(y_coords)
 
-                        # Calculate scale to fit image
-                        map_width = max_x - min_x
-                        map_height = max_y - min_y
+                    # Calculate scale to fit image
+                    map_width = max_x - min_x
+                    map_height = max_y - min_y
 
-                        if map_width > 0 and map_height > 0:
-                            scale_x = (
-                                MAP_WIDTH - 40
-                            ) / map_width  # Leave 20px margin on each side
-                            scale_y = (MAP_HEIGHT - 40) / map_height
-                            scale = min(scale_x, scale_y)
+                    if map_width > 0 and map_height > 0:
+                        scale_x = (
+                            MAP_WIDTH - 40
+                        ) / map_width  # Leave 20px margin on each side
+                        scale_y = (MAP_HEIGHT - 40) / map_height
+                        scale = min(scale_x, scale_y)
 
-                            # Center the map
-                            offset_x = (
-                                MAP_WIDTH - map_width * scale
-                            ) / 2 - min_x * scale
-                            offset_y = (
-                                MAP_HEIGHT - map_height * scale
-                            ) / 2 - min_y * scale
+                        # Center the map
+                        offset_x = (MAP_WIDTH - map_width * scale) / 2 - min_x * scale
+                        offset_y = (MAP_HEIGHT - map_height * scale) / 2 - min_y * scale
 
-                            # Draw rooms
-                            self._draw_regions(draw, offset_x, offset_y, scale)
+                        # Draw rooms
+                        self._draw_regions(draw, offset_x, offset_y, scale)
 
-                            # Draw coordinate points (walls/obstacles)
-                            self._draw_points(draw, offset_x, offset_y, scale)
+                        # Draw coordinate points (walls/obstacles)
+                        self._draw_points(draw, offset_x, offset_y, scale)
 
-                            # Draw zones (keepout, clean, observed)
-                            self._draw_zones(draw, offset_x, offset_y, scale)
+                        # Draw zones (keepout, clean, observed)
+                        img = self._draw_zones(img, offset_x, offset_y, scale)
 
         # Convert to bytes
         img_bytes = io.BytesIO()
@@ -275,7 +282,7 @@ class RoombaMapCamera(Camera):
             if len(coordinates) >= 2:
                 x = coordinates[0] * scale + offset_x
                 y = MAP_HEIGHT - (coordinates[1] * scale + offset_y)  # Flip Y axis
-                draw.ellipse([x - 1, y - 1, x + 1, y + 1], fill=WALL_COLOR)
+                # draw.ellipse([x - 1, y - 1, x + 1, y + 1], fill=WALL_COLOR)
 
     def _find_coordinate_by_id(self, coord_id: str) -> list[float] | None:
         """Find coordinate data by ID reference."""
@@ -321,28 +328,29 @@ class RoombaMapCamera(Camera):
         draw.text((x, y), text, fill=TEXT_COLOR, font=font)
 
     def _draw_zones(
-        self, draw: ImageDraw.ImageDraw, offset_x: float, offset_y: float, scale: float
-    ) -> None:
+        self, img: Image.Image, offset_x: float, offset_y: float, scale: float
+    ) -> Image.Image:
         """Draw keepout zones, clean zones, and observed zones on the map."""
+        current_img = img
 
         # Draw keepout zones (red)
         for zone in self._keepout_zones:
-            self._draw_zone_polygon(
-                draw,
+            current_img = self._draw_zone_polygon(
+                current_img,
                 zone,
                 offset_x,
                 offset_y,
                 scale,
                 KEEPOUT_ZONE_COLOR[:3],
                 KEEPOUT_ZONE_BORDER,
-                "KEEPOUT",
+                "KEEP OUT",
             )
 
         # Draw clean zones (green)
         for zone in self._clean_zones:
             zone_name = zone.get("name", "Clean Zone")
-            self._draw_zone_polygon(
-                draw,
+            current_img = self._draw_zone_polygon(
+                current_img,
                 zone,
                 offset_x,
                 offset_y,
@@ -355,8 +363,8 @@ class RoombaMapCamera(Camera):
         # Draw observed zones (orange)
         for zone in self._observed_zones:
             zone_name = zone.get("name", "Observed")
-            self._draw_zone_polygon(
-                draw,
+            current_img = self._draw_zone_polygon(
+                current_img,
                 zone,
                 offset_x,
                 offset_y,
@@ -366,9 +374,11 @@ class RoombaMapCamera(Camera):
                 zone_name,
             )
 
+        return current_img
+
     def _draw_zone_polygon(
         self,
-        draw: ImageDraw.ImageDraw,
+        img: Image.Image,
         zone: dict[str, Any],
         offset_x: float,
         offset_y: float,
@@ -376,17 +386,18 @@ class RoombaMapCamera(Camera):
         fill_color: tuple[int, int, int],
         border_color: tuple[int, int, int],
         label: str,
-    ) -> None:
+    ) -> Image.Image:
         """Draw a single zone polygon."""
         if "geometry" not in zone:
-            return
+            return img
 
         geometry = zone["geometry"]
         if geometry.get("type") != "polygon":
-            return
+            return img
 
         # Get coordinates by ID references
         polygon_ids = geometry.get("ids", [])
+        current_img = img
 
         for polygon_id_list in polygon_ids:
             if not isinstance(polygon_id_list, list):
@@ -403,12 +414,18 @@ class RoombaMapCamera(Camera):
                     polygon_coords.append((x, y))
 
             if len(polygon_coords) >= 3:  # Need at least 3 points for polygon
-                # Create a semi-transparent overlay for zones
-                # Since PIL doesn't support alpha in polygon fill directly,
-                # we'll use a dashed/dotted border style for zones
+                # Check if this is a keepout zone to apply transparency
+                is_keepout = label in {"KEEP OUT", "Observed"}
 
-                # Draw polygon outline with dashes
-                self._draw_dashed_polygon(draw, polygon_coords, border_color, 3)
+                if is_keepout:
+                    # Draw semi-transparent keepout zone using overlay technique
+                    current_img = self._draw_transparent_polygon(
+                        current_img, polygon_coords, fill_color, border_color
+                    )
+                else:
+                    # For other zones, use dashed border style
+                    draw = ImageDraw.Draw(current_img)
+                    self._draw_dashed_polygon(draw, polygon_coords, border_color, 3)
 
                 # Draw zone label
                 if polygon_coords and label:
@@ -418,9 +435,50 @@ class RoombaMapCamera(Camera):
                     centroid_x = x_sum / len(polygon_coords)
                     centroid_y = y_sum / len(polygon_coords)
 
+                    draw = ImageDraw.Draw(current_img)
                     self._draw_zone_label(
                         draw, centroid_x, centroid_y, label, border_color
                     )
+
+        return current_img
+
+    def _draw_transparent_polygon(
+        self,
+        base_img: Image.Image,
+        coords: list[tuple[float, float]],
+        fill_color: tuple[int, int, int],
+        border_color: tuple[int, int, int],
+    ) -> Image.Image:
+        """Draw a semi-transparent polygon by creating an overlay and blending.
+
+        Returns the blended image that should replace the original.
+        """
+        if len(coords) < 3:
+            return base_img
+
+        # Create a transparent overlay
+        overlay = Image.new("RGBA", base_img.size, (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+
+        # Draw the polygon on the overlay with transparency
+        transparent_fill = (*fill_color, 100)  # ~39% opacity
+        overlay_draw.polygon(
+            coords, fill=transparent_fill, outline=(*border_color, 255), width=2
+        )
+
+        # Convert base image to RGBA for blending
+        if base_img.mode != "RGBA":
+            base_rgba = base_img.convert("RGBA")
+        else:
+            base_rgba = base_img.copy()
+
+        # Blend the overlay with the base image
+        blended = Image.alpha_composite(base_rgba, overlay)
+
+        # Return the blended image in the original mode
+        if base_img.mode == "RGB":
+            return blended.convert("RGB")
+        return blended
 
     def _draw_dashed_polygon(
         self,

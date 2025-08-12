@@ -2,10 +2,7 @@
 
 from datetime import datetime
 
-from homeassistant.helpers import issue_registry as ir
-
 from .const import (
-    DOMAIN,
     binMappings,
     cleanBaseMappings,
     cycleMappings,

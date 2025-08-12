@@ -8,9 +8,13 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    ConfigEntryAuthFailed,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
-from .CloudApi import iRobotCloudApi
+from .CloudApi import iRobotCloudApi, AuthenticationError, CloudApiError
 from .const import DEFAULT_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,7 +72,10 @@ class RoombaCloudCoordinator(DataUpdateCoordinator):
         self.api = iRobotCloudApi(self.username, self.password, self.session)
 
     async def _async_setup(self):
-        await self.api.authenticate()
+        try:
+            await self.api.authenticate()
+        except (AuthenticationError, CloudApiError) as err:
+            raise ConfigEntryAuthFailed(f"Cloud API error: {err}") from err
 
     async def _async_update_data(self):
         try:
