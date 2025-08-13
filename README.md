@@ -9,7 +9,7 @@ Still work in progress, but the vacuum entity has been fully ported over.
 - [x] Attribute parity with jeremywillans' YAML entry
 - [x] Cloud API connection
   - [x] Cloud MQTT connection
-    - ONLY IN TESTING RIGHT NOW! I've reverse engineered their MQTT stack (but not all available commands) and will be releasing a better writeup later
+    - ONLY IN TESTING RIGHT NOW! I've reverse engineered their MQTT stack somewhat* (but not all available commands) and am still figuring out how it works.
 - [x] Actions
   - [x] Start
     - [x] Favorites
