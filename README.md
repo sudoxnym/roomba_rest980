@@ -1,15 +1,14 @@
 # roomba_rest980
 
-Drop-in native integration/replacement for [jeremywillans/ha-rest980-roomba](https://github.com/jeremywillans/ha-rest980-roomba).
+Integrate your iRobot Roomba with Home Assistant using rest980, and the cloud (optional).  
+Braava jet/mops available at some point, I do not own a Braava and will be basing that off another implementation of that API.
 
-Still work in progress, but the vacuum entity has been fully ported over.
+## Features
 
-## Roadmap
-
-- [x] Attribute parity with jeremywillans' YAML entry
+- [x] Native Vacuum entity
 - [x] Cloud API connection
   - [x] Cloud MQTT connection
-    - ONLY IN TESTING RIGHT NOW! I've reverse engineered their MQTT stack somewhat* (but not all available commands) and am still figuring out how it works.
+    - Testing: I've reverse engineered their MQTT stack somewhat* (but not all available commands) and am still figuring out how it works.
 - [x] Actions
   - [x] Start
     - [x] Favorites
@@ -18,18 +17,21 @@ Still work in progress, but the vacuum entity has been fully ported over.
     - [x] Selective room cleaning
     - [ ] Two pass feature
   - [x] Pause
-  - [ ] Unpause (Requires further testing)
+  - [ ] Unpause
+    - Testing: It may restart a run instead of unpausing.
   - [x] Return Home
   - [x] Stop
   - [x] Spot Clean
   - [ ] Mapping Run
-- [x] Dynamically grab rooms and add them to the UI
-  - [x] Grab room data (optional, cloud only)
-  - [ ] Create map image
+- [x] Dynamically grab rooms and add them to the UI (Cloud only)
+  - [x] Selective room cleaning
+  - [x] Grab room data
+  - [x] Create map image
+- [x] Entity attribute parity with jeremywillans' YAML config entry
 
 ## Why?
 
-I found that working with jeremywillans' implementation was nice and almost effortless, but I'd prefer to not have a YAML configuration and work with it by a more native integration that adds entities and isn't bound to making a lot of helpers per room.
+I found that working with [jeremywillans/ha-rest980-roomba](https://github.com/jeremywillans/ha-rest980-roomba) was nice and almost effortless, but I'd prefer to not have a YAML configuration and work with it by a more native integration that adds entities and isn't bound to making a lot of helpers per room.
 
 ## Setup
 
@@ -42,8 +44,8 @@ I found that working with jeremywillans' implementation was nice and almost effo
   - Note that everytime you remap and a room changes, it's ID may change (local users)!
 - Knowledge of your Roomba and rest980 servers' IPs
 
-> I recommend that you use [the lovelace-roomba-vacuum-card](https://github.com/jeremywillans/lovelace-roomba-vacuum-card) until I remake it for this integration.
-
+> I recommend that you use https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card as this is almost done being integrated with it.  
+> The only feature that requires testing is the selection of rooms (is separate from using the switch-based built in).
 
 ## Step 1: Setting up rest980: Grab Robot Credentials
 
@@ -67,7 +69,7 @@ and follow the on-screen instructions.
 
 <details>
   <summary>
-  HA Addon by jeremywillans
+  HA Add-on by jeremywillans
   </summary>
 
 Add `https://github.com/jeremywillans/hass-addons` to the Addons tab.
@@ -108,7 +110,7 @@ You may also add the service to an existing configuration. You do not need to ad
 
 <details>
   <summary>
-  HA Addon by jeremywillans
+  HA Add-on by jeremywillans
   </summary>
 
 If you haven't, add `https://github.com/jeremywillans/hass-addons` to the Addons tab.
@@ -128,23 +130,23 @@ Locate and install the `rest980` addon, then update and save the configuration o
 
 ## Step 2: Setting up the Integration
 
-rest980 will gather all the data about our robot, but the integration will format it perfectly, creating entities and a vacuum device.
+rest980 will gather all the data about our robot, but the integration will format it perfectly by creating entities and a vacuum device.
 
 <details open>
   <summary>
   For HACS users
   </summary>
-  Add this custom repository, https://github.com/ia74/roomba_rest980 to HACS as an Integration. Search for the addon ("iRobot Roomba (rest980)") and install it!
+  Search for the addon ("iRobot Roomba (rest980)", it's in the public repository now!) and install it!
 </details>
 
 <details>
   <summary>
-  Manual installation
+  Other HA/integration installation method
   </summary>
-  Clone this repository, https://github.com/ia74/roomba_rest980 , and add the custom component folder (`roomba_rest980`) to your Home Assistant's `config/custom_components` folder.
+  Clone this repository, https://github.com/ia74/roomba_rest980 , and add the custom component folder (`roomba_rest980`) to your Home Assistant's `config/custom_components` folder. You will need to reboot HA.
 </details>
 
-When you install the integration and restart Home Assistant, you will notice it picking up your Roomba.
+When you install the integration and restart Home Assistant, you may notice it picking up your Roomba.
 
 ![Discovery](img/discovery.png)
 
@@ -154,7 +156,10 @@ This is not due to your rest980 API server being discovered, rather the integrat
 
 ## Step 3: Adding your Roomba!
 
-If you see the autodiscovered integration, press "Add"!  
+If you see the autodiscovered integration, press "Add".  
+If not, simply press "Add Integration" and search for "iRobot Roomba (rest980)".  
+> Note: Do not add the native Roomba integration! That is a different implementation.
+
 You'll be presented with this popup. 
 
 ![Adding the robot](img/ADD.png)
@@ -179,7 +184,7 @@ If all has gone right, checking the device will show something like this:
 
 ## Step 3.5: Cloud issues.. (Cloud)
 
-iRobot does some quite interesting things with their API. As of current, my implementation does not use the cloud MQTT server (yet). However, even with the iRobot app and every instance of a connection closed, you may get ratelimited (*sometimes*) with the error "No mqtt slot available". There isn't a workaround for this that I know of, except to restart HA/reload the robot's config entry in ~5 minutes.
+iRobot does some unknown things with their cloud API. As of current, my implementation does not use the cloud MQTT server (yet), only their HTTP API. However, even with the iRobot app and every instance of a connection closed, you may get ratelimited (*sometimes*) with the error "No mqtt slot available". The integration handles this by auto-reloading. The local state is not interrupted.
 
 ## Step 4: Rooms! (Cloud)
 
@@ -206,11 +211,9 @@ From this part on, the guide will not diverge into Cloud/Local unless required a
 
 ## Step 5: Robot Maintenance / Done!
 
-> Unfortunately, this is not implemented yet, alongside any other action.
+> Unfortunately, this is not implemented yet..
 
-This integration will eventually support the maintenance function of the Roomba, but still is not implemented
-
-## Backwards Compatibility
+## "Backwards" Compatibility
 
 The integration adds all the attributes that you would expect from [jeremywillans implementation](https://github.com/jeremywillans/ha-rest980-roomba), making it compatible with [the lovelace-roomba-vacuum-card](https://github.com/jeremywillans/lovelace-roomba-vacuum-card).
 
@@ -229,4 +232,4 @@ Returning: The vacuum is done cleaning and is currently returning to the dock, b
 Unavailable: The entity is currently unavailable.
 Unknown: The state is not yet known.
 ```
-Since the Roomba reports a much more extensive cycle/phase output, I added an attribute "extendedStatus" that gives you "Ready", "Training", "Spot".
+Since the Roomba reports a much more extensive cycle/phase output, I added an attribute "extendedStatus" that gives you "Ready", "Training", "Spot", etc.
