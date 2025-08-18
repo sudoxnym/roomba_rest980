@@ -152,7 +152,7 @@ class RoombaMapCamera(Camera):
             sw_version=rdata["softwareVer"],
         )
 
-    def camera_image(
+    async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
         """Return camera image."""

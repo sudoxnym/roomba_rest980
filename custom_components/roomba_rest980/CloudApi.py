@@ -20,7 +20,7 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 # Debug: Save UMF data to file for analysis
-DEBUG_SAVE_UMF = True
+DEBUG_SAVE_UMF = False
 DEBUG_UMF_PATH = Path("/workspaces/ha-core/config/debug_umf_data.json")
 
 
@@ -450,7 +450,8 @@ class iRobotCloudApi:
         umf_data = await self._aws_request(url, params)
 
         # Save UMF data for debugging/camera development
-        await self._save_umf_data_for_debug(pmap_id, umf_data)
+        # TODO: Enable during development.
+        # await self._save_umf_data_for_debug(pmap_id, umf_data)
 
         return umf_data
 
