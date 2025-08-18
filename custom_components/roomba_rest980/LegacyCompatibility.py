@@ -8,7 +8,9 @@ from .const import (
     cycleMappings,
     errorMappings,
     jobInitiatorMappings,
+    mopRanks,
     notReadyMappings,
+    padMappings,
     phaseMappings,
     yesNoMappings,
 )
@@ -130,7 +132,7 @@ def createExtendedAttributes(self) -> dict[str, any]:
     else:
         robotCleanMode = "n-a"
 
-    return {
+    robotObject = {
         "extendedStatus": extv,
         "notready_msg": notReadyMappings.get(notReady, notReady),
         "error_msg": errorMappings.get(err, err),
@@ -157,3 +159,27 @@ def createExtendedAttributes(self) -> dict[str, any]:
         "maint_due": False,
         "pmap0_id": pmap0id,
     }
+
+    if data.get("padWetness"):
+        # It's a mop
+        # TODO: Make sure this works! I don't own a mop, so I'm just re-using what jeremywillans has written.
+        robotCleanMode = data.get("padWetness")["disposable"]
+        mopRankOverlap = data.get("rankOverlap")
+        detectedPad = data.get("detectedPad")
+        tankPresent = data.get("tankPresent")
+        lidOpen = data.get("lidOpen")
+        if mopRankOverlap:
+            robotObject["mop_behavior"] = mopRanks.get(mopRankOverlap, mopRankOverlap)
+        if detectedPad:
+            robotObject["pad"] = padMappings.get(detectedPad)
+        if tankPresent:
+            if notReady == 31:  # Fill Tank
+                robotObject["tank"] = "Fill Tank"
+            elif not lidOpen:
+                robotObject["tank"] = "Ready"
+            elif lidOpen:
+                robotObject["tank"] = "Lid Open"
+        else:
+            robotObject["tank"] = "Tank Missing"
+
+    return robotObject

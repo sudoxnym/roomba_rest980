@@ -9,6 +9,7 @@ notReadyMappings = {
     0: "n-a",
     2: "Uneven Ground",
     15: "Low Battery",
+    31: "Fill Tank",
     39: "Pending",
     48: "Path Blocked",
     68: "Updating Map",
@@ -152,6 +153,16 @@ jobInitiatorMappings = {
     "manual": "Robot",
     "localApp": "HA",
     "none": "None",  # Added for RoombaJobInitiator
+}
+
+mopRanks = {25: "Extended", 67: "Standard", 85: "Deep"}
+
+padMappings = {
+    "reusableDry": "Dry",
+    "reusableWet": "Wet",
+    "dispDry": "Single Dry",
+    "dispWet": "Single Wet",
+    "invalid": "No Pad",
 }
 
 regionTypeMappings = {
