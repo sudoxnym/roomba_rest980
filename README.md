@@ -1,7 +1,8 @@
 # roomba_rest980
 
 Integrate your iRobot Roomba with Home Assistant using rest980, and the cloud (optional).  
-Braava jet/mops available at some point, I do not own a Braava and will be basing that off another implementation of that API.
+
+> Braava jet/mops are now available *with partial support!* If anyone has one of these mops and is willing to test, please do so and make an issue if anything goes wrong, or anything is missing! 
 
 ## Features
 
