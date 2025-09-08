@@ -2,6 +2,7 @@
 
 import io
 import logging
+from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
@@ -13,6 +14,25 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, regionTypeMappings
+
+FONT_PATH = Path(__file__).parent / "fonts" / "OpenSans-Regular.ttf"
+
+
+def load_font(size: int):
+    """Load the OpenSans font in a specified size."""
+    try:
+        return ImageFont.truetype(str(FONT_PATH), size)
+    except OSError:
+        return ImageFont.load_default()
+
+
+# preload some sizes
+FONT_SIZES = {
+    12: load_font(12),
+    14: load_font(14),
+    24: load_font(24),
+}
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -170,18 +190,14 @@ class RoombaMapCamera(Camera):
 
         if not self._points2d or not self._regions:
             # Draw "No Map Data" message
-            try:
-                font = ImageFont.truetype("arial.ttf", 24)
-            except OSError:
-                font = ImageFont.load_default()
 
             text = "No Map Data Available"
-            bbox = draw.textbbox((0, 0), text, font=font)
+            bbox = draw.textbbox((0, 0), text, font=FONT_SIZES[24])
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
             x = (MAP_WIDTH - text_width) // 2
             y = (MAP_HEIGHT - text_height) // 2
-            draw.text((x, y), text, fill=TEXT_COLOR, font=font)
+            draw.text((x, y), text, fill=TEXT_COLOR, font=FONT_SIZES[24])
 
         # Calculate map bounds from points2d
         elif self._points2d:
@@ -308,12 +324,7 @@ class RoombaMapCamera(Camera):
         centroid_y = y_sum / len(polygon_coords)
 
         # Draw text
-        try:
-            font = ImageFont.truetype("arial.ttf", 14)
-        except OSError:
-            font = ImageFont.load_default()
-
-        bbox = draw.textbbox((0, 0), text, font=font)
+        bbox = draw.textbbox((0, 0), text, font=FONT_SIZES[14])
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
@@ -325,7 +336,7 @@ class RoombaMapCamera(Camera):
             [x - 2, y - 2, x + text_width + 2, y + text_height + 2],
             fill=(255, 255, 255, 180),
         )
-        draw.text((x, y), text, fill=TEXT_COLOR, font=font)
+        draw.text((x, y), text, fill=TEXT_COLOR, font=FONT_SIZES[14])
 
     def _draw_zones(
         self, img: Image.Image, offset_x: float, offset_y: float, scale: float
@@ -574,12 +585,8 @@ class RoombaMapCamera(Camera):
         color: tuple[int, int, int],
     ) -> None:
         """Draw a zone label at the specified position."""
-        try:
-            font = ImageFont.truetype("arial.ttf", 12)
-        except OSError:
-            font = ImageFont.load_default()
 
-        bbox = draw.textbbox((0, 0), text, font=font)
+        bbox = draw.textbbox((0, 0), text, font=FONT_SIZES[12])
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
@@ -594,7 +601,7 @@ class RoombaMapCamera(Camera):
         )
 
         # Draw text
-        draw.text((text_x, text_y), text, fill=color, font=font)
+        draw.text((text_x, text_y), text, fill=color, font=FONT_SIZES[12])
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
