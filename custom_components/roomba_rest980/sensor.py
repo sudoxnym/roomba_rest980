@@ -12,7 +12,9 @@ from .const import (
     cleanBaseMappings,
     errorMappings,
     jobInitiatorMappings,
+    mopRanks,
     notReadyMappings,
+    padMappings,
     phaseMappings,
 )
 from .RoombaSensor import RoombaCloudSensor, RoombaSensor
@@ -47,7 +49,6 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
                         )
     if cloud_entities:
         async_add_entities(cloud_entities)
-    entry.runtime_data.err = RoombaError(coordinator, entry)
     async_add_entities(
         [
             RoombaAttributes(coordinator, entry),
@@ -67,11 +68,129 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             RoombaCleanEdges(coordinator, entry),
             RoombaCleanMode(coordinator, entry),
             RoombaNotReady(coordinator, entry),
-            entry.runtime_data.err,
+            RoombaError(coordinator, entry),
             RoombaCloudAttributes(cloudCoordinator, entry),
+            MopCleanMode(coordinator, entry),
+            MopBehavior(coordinator, entry),
+            MopPad(coordinator, entry),
+            MopTank(coordinator, entry),
         ],
         update_before_add=True,
     )
+
+
+class MopCleanMode(RoombaSensor):
+    """A simple sensor that returns the clean mode of the mop."""
+
+    _rs_given_info = ("Mop Clean Mode", "mop_clean_mode")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        # self._attr_options = list(cleanBaseMappings.values()) #TODO: Update with real value list
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:auto-mode"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        padWetness = data.get("padWetness")
+        if not padWetness:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        mode = padWetness.get("disposable")
+        self._attr_native_value = mode
+        self.async_write_ha_state()
+
+
+class MopBehavior(RoombaSensor):
+    """A simple sensor that returns the behavior of the mop."""
+
+    _rs_given_info = ("Mop Behavior", "mop_behavior")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = list(mopRanks.values())
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:shimmer"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        rankOverlap = data.get("rankOverlap")
+        if not rankOverlap:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_native_value = mopRanks.get(rankOverlap, rankOverlap)
+        self.async_write_ha_state()
+
+
+class MopPad(RoombaSensor):
+    """A simple sensor that returns the pad type of the mop."""
+
+    _rs_given_info = ("Mop Pad", "mop_pad")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = list(padMappings.values())
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:shimmer"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        detectedPad = data.get("detectedPad")
+        if not detectedPad:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        self._attr_native_value = padMappings.get(detectedPad, detectedPad)
+        self.async_write_ha_state()
+
+
+class MopTank(RoombaSensor):
+    """A simple sensor that returns the status of the tank of the mop."""
+
+    _rs_given_info = ("Mop Tank", "mop_tank")
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = list(padMappings.values())
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:shimmer"
+
+    def _handle_coordinator_update(self):
+        """Update sensor when coordinator data changes."""
+        data = self.coordinator.data or {}
+        status = data.get("cleanMissionStatus", {})
+        notReady = status.get("notReady")
+        detectedPad = data.get("detectedPad")
+        if not detectedPad:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+        tankPresent = data.get("tankPresent")
+        lidOpen = data.get("lidOpen")
+        if tankPresent:
+            if notReady == 31:  # Fill Tank
+                tankState = "Fill Tank"
+            elif not lidOpen:
+                tankState = "Ready"
+            elif lidOpen:
+                tankState = "Lid Open"
+        else:
+            tankState = "Tank Missing"
+        self._attr_native_value = tankState
+        self.async_write_ha_state()
 
 
 class RoombaBatterySensor(RoombaSensor):
@@ -459,7 +578,7 @@ class RoombaCleanEdges(RoombaSensor):
 class RoombaError(RoombaSensor):
     """Read the error message of the Roomba."""
 
-    _rs_given_info = ("Error", "error")
+    _rs_given_info = ("Error Message", "error")
 
     def __init__(self, coordinator, entry) -> None:
         """Create a new error sensor."""

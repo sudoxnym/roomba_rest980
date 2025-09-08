@@ -155,7 +155,7 @@ jobInitiatorMappings = {
     "none": "None",  # Added for RoombaJobInitiator
 }
 
-mopRanks = {25: "Extended", 67: "Standard", 85: "Deep"}
+mopRanks = {15: "No Mop", 25: "Extended", 67: "Standard", 85: "Deep"}
 
 padMappings = {
     "reusableDry": "Dry",
