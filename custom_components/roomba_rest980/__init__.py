@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -172,13 +172,18 @@ async def _async_setup_cloud(
             # Use stored BLID from config entry
             entry.runtime_data.robot_blid = entry.data["robot_blid"]
 
-        await hass.config_entries.async_forward_entry_setups(
-            entry, ["switch", "button", "camera"]
-        )
+        # Only forward setups if the entry is in LOADED state
+        if entry.state == ConfigEntryState.LOADED:
+            await hass.config_entries.async_forward_entry_setups(
+                entry, ["switch", "button", "camera"]
+            )
+        else:
+            _LOGGER.warning("Config entry not in LOADED state, skipping cloud platform setup")
 
     except Exception as e:  # pylint: disable=broad-except
         _LOGGER.error("Failed to set up cloud coordinator: %s", e)
-        cloud_coordinator = None
+        # Don't let cloud coordinator failure prevent main integration from working
+        entry.runtime_data.cloud_coordinator = None
 
 
 async def _async_match_blid(
